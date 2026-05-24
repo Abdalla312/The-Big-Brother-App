@@ -1,0 +1,1 @@
+-- Initial Flyway Setup

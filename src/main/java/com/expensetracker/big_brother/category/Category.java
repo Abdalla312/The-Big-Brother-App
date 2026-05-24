@@ -1,0 +1,41 @@
+package com.expensetracker.big_brother.category;
+
+import com.expensetracker.big_brother.common.BaseEntity;
+import com.expensetracker.big_brother.common.TransactionType;
+import com.expensetracker.big_brother.user.User;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+//   - `id` (UUID, Primary Key)
+//   - `name` (String)
+//   - `type` (Enum: INCOME, EXPENSE)
+//   - `color` (String - Hex Code)
+//   - `icon` (String - Icon Name)
+//   - `user_id` (UUID, Foreign Key to User. Nullable for system-wide defaults)
+//   - `createdAt` (Timestamp)
+//   - `updatedAt` (Timestamp)
+//
+@Entity
+@Table(name = "categories")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Category extends BaseEntity {
+    @Column(nullable = false)
+    private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TransactionType type;
+
+    private String color;
+    private String icon;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+}
