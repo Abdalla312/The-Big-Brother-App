@@ -1,4 +1,4 @@
-package com.expensetracker.big_brother.config;
+package com.expensetracker.big_brother.auth;
 
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import io.jsonwebtoken.Claims;
