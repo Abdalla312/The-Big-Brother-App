@@ -16,7 +16,7 @@ public class EmailVerificationToken {
     private Long id;
 
     @Getter
-    @Column(nullable = false, unique = true)
+    @Column(name = "token_hash", nullable = false, unique = true)
     private String tokenHash;
 
     @Getter
@@ -25,7 +25,7 @@ public class EmailVerificationToken {
     private User user;
 
     @Getter
-    @Column(nullable = false)
+    @Column(name = "expires_at",nullable = false)
     private LocalDateTime expiresAt;
 
     public EmailVerificationToken(String tokenHash, User user, LocalDateTime expiresAt) {

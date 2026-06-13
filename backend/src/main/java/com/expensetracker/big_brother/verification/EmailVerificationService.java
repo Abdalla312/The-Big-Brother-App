@@ -38,6 +38,7 @@ public class EmailVerificationService {
     @Transactional
     public void sendVerificationEmail(User user) {
         verificationRepository.deleteByUser(user);
+        verificationRepository.flush();
         String rawToken = generateToken();
         String tokenHash = hashToken(rawToken, user.getId());
         EmailVerificationToken token = new EmailVerificationToken(
@@ -45,16 +46,29 @@ public class EmailVerificationService {
                 user,
                 LocalDateTime.now().plusHours(1));
         verificationRepository.save(token);
-        String verificationLink = backendUrl + "/api/auth/verify-email?userId="
-                + user.getId()
-                + "&token="
-                + rawToken;
-
-        emailService.send(
-                user.getEmail(),
-                "Verify your email",
-                "Click this link to verify your email: " + verificationLink
-        );
+        String verificationLink = backendUrl + "/api/v1/auth/verify-email?userId="
+                + user.getId() + "&token=" + rawToken;
+        String htmlBody = """
+         <!DOCTYPE html>                                                  \s
+         <html>                                                           \s
+         <body style="font-family: Arial, sans-serif; padding: 20px;">    \s
+           <div style="max-width: 600px; margin: auto;">                  \s
+             <h2>Verify your email</h2>                                   \s
+             <p>Hi %s,</p>                                                \s
+             <p>Click the button below to verify your email address:</p>  \s
+             <a href="%s" style="display: inline-block; padding: 12px     \s
+     24px; background: #4F46E5; color: white; text-decoration: none;      \s
+     border-radius: 6px;">Verify Email</a>                                \s
+             <p style="margin-top: 20px; color: #666;">This link expires  \s
+     in 1 hour.</p>                                                       \s
+             <hr style="margin-top: 30px;">                               \s
+             <p style="color: #999; font-size: 12px;">If you didn't       \s
+     create this account, you can ignore this email.</p>                  \s
+           </div>                                                         \s
+         </body>                                                          \s
+         </html>                                                          \s
+        \s""".formatted(user.getName(), verificationLink);
+        emailService.sendHtml(user.getEmail(),"Verify your email", htmlBody);
     }
 
     @Transactional

@@ -3,4 +3,3 @@ spring:
     active: dev
   application:
     name: big_brother
-
