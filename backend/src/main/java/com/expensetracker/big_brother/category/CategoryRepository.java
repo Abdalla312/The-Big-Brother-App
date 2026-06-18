@@ -6,5 +6,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
-    List<Category> findAllByUserIdOrUserIdIsNull(UUID userId);
+    List<Category> findAllByUserIdOrUserIsNull(UUID userId);
 }
