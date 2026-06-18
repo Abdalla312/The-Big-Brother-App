@@ -76,6 +76,7 @@ public class AuthService {
         return AuthResponse
                 .builder()
                 .name(savedUser.getName())
+                .email(savedUser.getEmail())
                 .verified(savedUser.isUserVerified())
                 .message("Registration successful. Please verify your email before logging in.")
                 .build();
@@ -96,7 +97,7 @@ public class AuthService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
         String token = jwtService.generateToken(new CustomUserDetails(user));
         return AuthResponse.builder()
-                .token(token)
+                .accessToken(token)
                 .name(user.getName())
                 .email(user.getEmail())
                 .verified(user.isUserVerified())
