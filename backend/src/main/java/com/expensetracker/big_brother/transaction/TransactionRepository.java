@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID>, JpaSpecificationExecutor<Transaction> {
 
+    boolean existsByCategoryId(UUID categoryId);
 }

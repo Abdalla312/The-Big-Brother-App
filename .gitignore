@@ -48,7 +48,7 @@ build/
 .env.*
 *.env
 AGENTS.md
-
+**/plans/
 # Logs
 *.log
 /logs/
