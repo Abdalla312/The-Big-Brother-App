@@ -1,6 +1,7 @@
 package com.expensetracker.big_brother.exception;
 
 import com.expensetracker.big_brother.common.ErrorResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.servlet.View;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,10 +25,61 @@ import java.util.List;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    private final View error;
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFoundException(
+            ResourceNotFoundException exception, HttpServletRequest request) {
+        log.warn("ResourceNotFoundException: {} - {}", "NOT_FOUND", exception.getMessage());
+        ErrorResponse error = new ErrorResponse(
+                404, "Not Found", exception.getMessage(), Instant.now(), request.getRequestURI(), null);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
 
-    public GlobalExceptionHandler(View error) {
-        this.error = error;
+    @ExceptionHandler(ResourceOwnershipException.class)
+    public ResponseEntity<ErrorResponse> handleOwnershipException(
+            ResourceOwnershipException exception,
+            WebRequest request) {
+        HttpStatus status = HttpStatus.FORBIDDEN;
+        String errorCode = status.name();
+        String message = exception.getMessage();
+        String path = request.getDescription(false).replace("uri=", "");
+        log.warn("OwnershipException: {} - {}", errorCode, message);
+        ErrorResponse errorResponse = new ErrorResponse(
+                status.value(),
+                errorCode,
+                message,
+                Instant.now(),
+                path,
+                null
+        );
+        return new ResponseEntity<>(errorResponse, status);
+    }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicate(
+            DuplicateResourceException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                409,
+                "Conflict",
+                ex.getMessage(),
+                Instant.now(),
+                request.getRequestURI(),
+                null
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(CategoryInUseException.class)
+    public ResponseEntity<ErrorResponse> handleCategoryInUse(
+            CategoryInUseException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                409,
+                "Conflict",
+                ex.getMessage(),
+                Instant.now(),
+                request.getRequestURI(),
+                null
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(ResponseStatusException.class)
@@ -235,7 +286,8 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         String path = request.getDescription(false).replace("uri=", "");
-        log.error("Unexpected error occurred", ex);
+        log.error("FALLING BACK to generic handler for: {}", ex.getClass().
+                getName(), ex);
         ErrorResponse errorResponse = new ErrorResponse(
                 status.value(),
                 "INTERNAL_SERVER_ERROR",

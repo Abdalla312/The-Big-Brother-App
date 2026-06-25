@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthService {
+    private static final long COOLDOWN_SECONDS = 300;
     // dependencies
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -34,7 +35,6 @@ public class AuthService {
     private final AuthenticationManager authManager;
     private final JwtService jwtService;
     private final Map<String, Instant> lastSeen = new ConcurrentHashMap<>();
-    private static final long COOLDOWN_SECONDS = 300;
 
     AuthService(JwtService jwtService,
                 UserRepository userRepository,
@@ -55,6 +55,7 @@ public class AuthService {
                     "Please wait before requesting another email");
         }
     }
+
     // Register
     public AuthResponse register(@Valid RegisterRequest request) {
         String email = request.getEmail().trim().toLowerCase();

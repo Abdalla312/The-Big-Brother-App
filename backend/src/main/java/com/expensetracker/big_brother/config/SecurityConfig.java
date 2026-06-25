@@ -29,7 +29,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**","/api/v1/health","/actuator/health")
+                        .requestMatchers("/api/v1/auth/**","/api/v1/health","/actuator/health","/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll().anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
