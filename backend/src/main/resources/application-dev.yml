@@ -33,6 +33,7 @@ spring:
     default-schema: ${DB_SCHEMA:big_brother}
 server:
   port: 8080
+  forward-headers-strategy: framework
 app:
   backend-url: ${APP_BACKEND_URL}
   jwt:
