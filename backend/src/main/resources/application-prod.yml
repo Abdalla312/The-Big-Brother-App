@@ -1,0 +1,31 @@
+spring:
+  config:
+    import: ""
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  shutdown: graceful
+
+logging:
+  level:
+    com.expensetracker: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+app:
+  jwt:
+    access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:86400000}
