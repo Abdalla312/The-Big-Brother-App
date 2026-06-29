@@ -3,23 +3,18 @@ package com.expensetracker.big_brother.transaction.dto;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
-import lombok.Data;
-import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record TransactionRequest(
-        @NotNull(message = "Transaction type is required")
+public record UpdateTransactionRequest(
         TransactionType type,
 
-        @NotNull(message = "Amount is required")
         @DecimalMin(value = "0.01", message = "Amount must be greater than zero")
         @Digits(integer = 15, fraction = 4, message = "Amount format is invalid")
         BigDecimal amount,
 
-        @NotNull(message = "Transaction date is required")
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
         @PastOrPresent(message = "Transaction date cannot be in the future")
         LocalDate transactionDate,
@@ -30,7 +25,6 @@ public record TransactionRequest(
         @Size(max = 100, message = "Payment method must be 100 characters or less")
         String paymentMethod,
 
-        @NotNull(message = "Category is required")
         UUID categoryId
 ) {
 }

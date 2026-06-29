@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -276,6 +277,20 @@ public class GlobalExceptionHandler {
                 Instant.now(),
                 path,
                 fieldErrors
+        );
+        return new ResponseEntity<>(errorResponse, status);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleDateFormat(
+            HttpMessageNotReadableException exception) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        log.error("Unexpected runtime error", exception);
+        ErrorResponse errorResponse = ErrorResponse.of(
+                status.value(),
+                "BAD_REQUEST",
+                "Invalid date format. Use yyyy-MM-dd",
+                null
         );
         return new ResponseEntity<>(errorResponse, status);
     }

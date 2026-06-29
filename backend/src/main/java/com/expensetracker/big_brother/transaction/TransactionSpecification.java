@@ -5,6 +5,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 public class TransactionSpecification {
@@ -21,7 +22,17 @@ public class TransactionSpecification {
     }
 
     public static Specification<Transaction> inMonth(String month) {
-        YearMonth ym = YearMonth.parse(month);
+        if (month== null || month.isBlank()){
+            return ((root, query, criteriaBuilder) -> criteriaBuilder.conjunction());
+        }
+        YearMonth ym;
+        if (month.length() == 7) {
+            ym = YearMonth.parse(month, DateTimeFormatter.ofPattern("yyyy-MM"));
+        } else if (month.length() == 2) {
+            ym = YearMonth.of(YearMonth.now().getYear(), Integer.parseInt(month));
+        } else {
+            throw new IllegalArgumentException("Month format must be MM or yyyy-MM");
+        }
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.atEndOfMonth();
         return (root, query, criteriaBuilder) -> criteriaBuilder.between(root.get("transactionDate"), start, end);
