@@ -158,6 +158,134 @@
         }
       }
     },
+    "/api/v1/budget": {
+      "get": {
+        "tags": [
+          "budget-controller"
+        ],
+        "operationId": "getBudgets",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListBudgetResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "budget-controller"
+        ],
+        "operationId": "createBudget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBudgetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/budget/{id}": {
+      "get": {
+        "tags": [
+          "budget-controller"
+        ],
+        "operationId": "deleteBudget",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "budget-controller"
+        ],
+        "operationId": "updateBudget",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBudgetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBudgetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/resend-verification": {
       "post": {
         "tags": [
@@ -662,6 +790,92 @@
           }
         }
       },
+      "BudgetRequest": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "month": {
+            "type": "string",
+            "pattern": "\\d{4}-\\d{2}"
+          },
+          "limitAmount": {
+            "type": "number",
+            "minimum": 0.01
+          }
+        },
+        "required": [
+          "categoryId",
+          "limitAmount",
+          "month"
+        ]
+      },
+      "ApiResponseBudgetResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/BudgetResponse"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BudgetResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryResponse"
+          },
+          "month": {
+            "type": "string"
+          },
+          "limitAmount": {
+            "type": "number"
+          },
+          "spentAmount": {
+            "type": "number"
+          },
+          "remainingAmount": {
+            "type": "number"
+          },
+          "percentUsed": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "UpdateBudgetRequest": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "month": {
+            "type": "string",
+            "pattern": "\\d{4}-\\d{2}"
+          },
+          "limitAmount": {
+            "type": "number",
+            "minimum": 0.01
+          }
+        }
+      },
       "ResendVerificationRequest": {
         "type": "object",
         "properties": {
@@ -892,6 +1106,28 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CategoryResponse"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseListBudgetResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BudgetResponse"
             }
           },
           "timestamp": {

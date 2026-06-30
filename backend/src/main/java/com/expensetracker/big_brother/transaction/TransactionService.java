@@ -35,7 +35,6 @@ public class TransactionService {
     private final CategoryRepository categoryRepository;
     private final TransactionMapper transactionMapper;
     private final OwnershipValidator ownershipValidator;
-    private final TransactionMapperImpl transactionMapperImpl;
     private final UserRepository userRepository;
 
     // list all authed user's transactions
@@ -94,13 +93,14 @@ public class TransactionService {
         ownershipValidator.validateOwnership(transaction.getUser().getId(), currentUserId);
         if (request.type() != null) transaction.setType(request.type());
         if (request.amount() != null) transaction.setAmount(request.amount());
+        if (request.transactionDate() != null) transaction.setTransactionDate(request.transactionDate());
         if (request.note() != null) transaction.setNote(request.note());
         if (request.paymentMethod() != null) transaction.setPaymentMethod(request.paymentMethod());
         // category update with ownership check
         if (request.categoryId() != null && !transaction.getCategory().getId().equals(request.categoryId())) {
             Category newCategory = categoryRepository.findById(request.categoryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Category", request.categoryId()));
-            if (newCategory.getUser().getId() != null && newCategory.getUser().getId().equals(currentUserId)) {
+            if (newCategory.getUser() != null && !newCategory.getUser().getId().equals(currentUserId)) {
                 throw new ResourceOwnershipException();
             }
             transaction.setCategory(newCategory);
