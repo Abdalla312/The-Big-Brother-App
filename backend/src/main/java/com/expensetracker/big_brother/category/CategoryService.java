@@ -8,11 +8,11 @@ import com.expensetracker.big_brother.exception.CategoryInUseException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.exception.ResourceOwnershipException;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
+import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -40,7 +40,9 @@ public class CategoryService {
     // it's owned by the user other users cannot see it
     public CategoryResponse createCategory(@Valid CreateCategoryRequest request, UUID userId) {
         Category category = categoryMapper.toEntity(request);
-        category.setUser(userRepository.getReferenceById(userId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        category.setUser(user);
         categoryRepository.save(category);
         log.info("New category created for userId: {}", userId);
         return categoryMapper.toResponse(category);
@@ -72,9 +74,10 @@ public class CategoryService {
     public void deleteCategory(UUID categoryId, UUID userId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category Not found"));
-        if (category.getUser()== null || !category.getUser().getId().equals(userId)) {
-            throw new AccessDeniedException("You do not have permission to delete this category");
+        if (category.getUser() == null) {
+            throw new ResourceOwnershipException();
         }
+        ownershipValidator.validateOwnership(category.getUser().getId(), userId);
         if (transactionRepository.existsByCategoryId(categoryId)){
             throw new CategoryInUseException();
         }

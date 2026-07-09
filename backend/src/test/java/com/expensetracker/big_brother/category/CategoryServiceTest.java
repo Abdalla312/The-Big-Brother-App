@@ -17,8 +17,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import org.springframework.security.access.AccessDeniedException;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -107,13 +105,24 @@ public class CategoryServiceTest {
         CreateCategoryRequest request = aCreateRequest();
         Category entity = aCategory();
         when(categoryMapper.toEntity(request)).thenReturn(entity);
-        when(userRepository.getReferenceById(userId)).thenReturn(aUser());
+        when(userRepository.findById(userId)).thenReturn(Optional.of(aUser()));
         when(categoryRepository.save(entity)).thenReturn(entity);
         when(categoryMapper.toResponse(entity)).thenReturn(aCategoryResponse(entity));
 
         CategoryResponse result = categoryService.createCategory(request, userId);
         assertThat(result.name()).isEqualTo("Food");
         verify(categoryRepository).save(entity);
+    }
+
+    @Test
+    void createCategory_UserNotFound_ThrowsException() {
+        CreateCategoryRequest request = aCreateRequest();
+        when(categoryMapper.toEntity(request)).thenReturn(aCategory());
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.createCategory(request, userId))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(categoryRepository, never()).save(any());
     }
 
     // ---- updateCategory -------
@@ -188,8 +197,10 @@ public class CategoryServiceTest {
         Category category = aCategory();
         UUID otherId = UUID.randomUUID();
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        doThrow(new ResourceOwnershipException()).when(ownershipValidator)
+                .validateOwnership(userId, otherId);
         assertThatThrownBy(() -> categoryService.deleteCategory(categoryId, otherId))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(ResourceOwnershipException.class);
         verify(categoryRepository, never()).delete(any());
     }
 
@@ -198,7 +209,7 @@ public class CategoryServiceTest {
         Category system = aSystemCategory();
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(system));
         assertThatThrownBy(() -> categoryService.deleteCategory(categoryId, userId))
-                .isInstanceOf(AccessDeniedException.class);
+                .isInstanceOf(ResourceOwnershipException.class);
         verify(categoryRepository, never()).delete(any());
     }
 
