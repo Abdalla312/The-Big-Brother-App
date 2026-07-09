@@ -1,39 +1,21 @@
 spring:
   config:
     import: optional:file:.env[.properties]
-  datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-  mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+
   jpa:
-    hibernate:
-      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+        highlight_sql: true
 
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    validate-on-migrate: true
-    locations: classpath:db/migration
+logging:
+  level:
+    com.expensetracker: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.sql: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+
 server:
   port: 8080
-app:
-  backend-url: ${APP_BACKEND_URL}
-  jwt:
-    secret: ${JWT_SECRET}
-    access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:86400000}
+

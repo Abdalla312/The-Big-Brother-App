@@ -23,7 +23,7 @@ public record PageResponse<T>(
         Sort sortObj = page.getSort();
         List<SortInfo> sortInfo = sortObj.isSorted()
                 ? sortObj.stream().map(
-                        o -> new SortInfo(o.getProperty(), o.getDirection().name())).toList()
+                o -> new SortInfo(o.getProperty(), o.getDirection().name())).toList()
                 : List.of();
         return new PageResponse<>(
                 page.getContent(),

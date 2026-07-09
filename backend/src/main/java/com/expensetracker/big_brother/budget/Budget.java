@@ -30,7 +30,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class Budget extends BaseEntity {
 
-    @Column(nullable = false, length = 7)
+    @Column(name = "\"month\"", nullable = false, length = 7)
     private String month;
 
     @Column(nullable = false, precision = 19, scale = 4)

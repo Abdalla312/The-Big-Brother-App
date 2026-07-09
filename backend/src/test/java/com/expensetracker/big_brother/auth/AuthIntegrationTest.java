@@ -2,6 +2,7 @@ package com.expensetracker.big_brother.auth;
 
 import com.expensetracker.big_brother.auth.dto.LoginRequest;
 import com.expensetracker.big_brother.auth.dto.RegisterRequest;
+import com.expensetracker.big_brother.mail.EmailService;
 import com.expensetracker.big_brother.user.UserRepository;
 import com.expensetracker.big_brother.verification.EmailVerificationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,11 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -32,6 +34,9 @@ public class AuthIntegrationTest {
 
     @Autowired
     private EmailVerificationRepository verificationRepository;
+
+    @MockitoBean
+    private EmailService emailService;
 
     @BeforeEach
     void setUp() {
