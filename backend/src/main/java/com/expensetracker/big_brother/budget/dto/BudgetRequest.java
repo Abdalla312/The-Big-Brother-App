@@ -12,8 +12,8 @@ public record BudgetRequest(
         @NotNull(message = "Category is required")
         UUID categoryId,
 
-        @NotBlank(message = "Month is required (format: YYYY-MM)")
-        @Pattern(regexp = "\\d{4}-\\d{2}", message = "Month must be in YYYY-MM format")
+        @NotBlank(message = "Month is required (format: yyyy-MM)")
+        @Pattern(regexp = "\\d{4}-\\d{2}", message = "Month must be in yyyy-MM format")
         String month,
 
         @NotNull(message = "Budget limit is required")

@@ -12,12 +12,14 @@ import com.expensetracker.big_brother.exception.ResourceOwnershipException;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -35,11 +37,16 @@ public class BudgetService {
     private final UserRepository userRepository;
 
     // list all budgets in a month
-    @Transactional
+    @Transactional(readOnly = true)
     public List<BudgetResponse> getBudgets(UUID userId, String month) {
+        YearMonth yearMonth;
+        try{
+            yearMonth = YearMonth.parse(month);
+        } catch (DateTimeException e) {
+            throw new IllegalArgumentException("Invalid date format. Use yyyy-MM");
+        }
         List<Budget> budgets = budgetRepository.findAllByUserIdAndMonth(userId, month);
 
-        YearMonth yearMonth = YearMonth.parse(month);
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
 
@@ -70,9 +77,13 @@ public class BudgetService {
         budget.setLimitAmount(request.limitAmount());
         budget.setCategory(category);
         budget.setUser(user);
-
-        Budget saved = budgetRepository.save(budget);
-
+        Budget saved;
+        try {
+            saved = budgetRepository.save(budget);
+        } catch (DataIntegrityViolationException e){
+            log.warn("Concurrent budget creation detected for user={}, category={}, month={}", userId, category.getId(), request.month());
+            throw new DuplicateResourceException("A budget for this category and month already exists");
+        }
         YearMonth yearMonth = YearMonth.parse(request.month());
         BigDecimal spent = transactionRepository.sumExpensesByUserAndCategoryAndDateRange(
                 userId, category.getId(), yearMonth.atDay(1), yearMonth.atEndOfMonth());
@@ -89,7 +100,7 @@ public class BudgetService {
         if (request.categoryId() != null && !request.categoryId().equals(budget.getCategory().getId())) {
             Category newCategory = categoryRepository.findById(request.categoryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Category", request.categoryId()));
-            ownershipValidator.validateOwnership(newCategory.getUser().getId(), userId);
+            if (newCategory.getUser() != null && !newCategory.getUser().getId().equals(userId)) throw new ResourceOwnershipException();
             budget.setCategory(newCategory);
         }
         if (request.limitAmount() != null) budget.setLimitAmount(request.limitAmount());

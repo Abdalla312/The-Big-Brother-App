@@ -20,6 +20,10 @@ public interface BudgetMapper {
     default BudgetResponse toResponseWithCalculations(Budget budget, BigDecimal spent) {
         BudgetResponse base = toResponse(budget);
         BigDecimal remaining = budget.getLimitAmount().subtract(spent);
+        if (budget.getLimitAmount().compareTo(BigDecimal.ZERO) == 0){
+            return new BudgetResponse(
+                    base.id(), base.category(), base.month(), base.limitAmount(), spent, spent.negate(), 0.0);
+        }
         double percent = spent.doubleValue() / budget.getLimitAmount().doubleValue() * 100.0;
         return new BudgetResponse(
                 base.id(), base.category(), base.month(), base.limitAmount(),

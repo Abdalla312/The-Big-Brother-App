@@ -14,8 +14,10 @@ public record ErrorResponse(int status,
                             String path,
                             List<FieldError> errors) {
 
-    public record FieldError(String field, String message) {}
     public static ErrorResponse of(int status, String error, String message, String path) {
         return new ErrorResponse(status, error, message, Instant.now(), path, null);
+    }
+
+    public record FieldError(String field, String message) {
     }
 }

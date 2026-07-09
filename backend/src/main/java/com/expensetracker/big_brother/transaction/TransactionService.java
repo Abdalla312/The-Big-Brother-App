@@ -12,7 +12,6 @@ import com.expensetracker.big_brother.transaction.dto.TransactionResponse;
 import com.expensetracker.big_brother.transaction.dto.UpdateTransactionRequest;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -21,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +38,7 @@ public class TransactionService {
     private final UserRepository userRepository;
 
     // list all authed user's transactions
-    @Transactional
+    @Transactional(readOnly = true)
     public PageResponse<TransactionResponse> getTransactions(
             UUID userId, String month, UUID categoryId,
             TransactionType type, int page, int size) {
@@ -57,7 +57,7 @@ public class TransactionService {
         return PageResponse.from(responsePage);
     }
     // get certain user's transaction
-    @Transactional
+    @Transactional(readOnly = true)
     public TransactionResponse getTransaction(UUID transactionId, UUID userId) {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", transactionId));
@@ -78,7 +78,8 @@ public class TransactionService {
 
         Transaction newTransaction = transactionMapper.toEntity(request);
         newTransaction.setCategory(category);
-        User user = userRepository.getReferenceById(currentUserId);
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", currentUserId));
         newTransaction.setUser(user);
 
         Transaction saved = transactionRepository.save(newTransaction);

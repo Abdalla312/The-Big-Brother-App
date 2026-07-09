@@ -9,7 +9,7 @@ import java.util.UUID;
 public record UpdateBudgetRequest(
         UUID categoryId,
 
-        @Pattern(regexp = "\\d{4}-\\d{2}", message = "Month must be in YYYY-MM format")
+        @Pattern(regexp = "\\d{4}-\\d{2}", message = "Month must be in yyyy-MM format")
         String month,
 
         @DecimalMin(value = "0.01", message = "Budget limit must be greater than zero")

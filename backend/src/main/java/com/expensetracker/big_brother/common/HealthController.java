@@ -12,9 +12,9 @@ import java.util.Map;
 @RequestMapping("/api/v1")
 public class HealthController {
     @GetMapping("/health")
-    public ResponseEntity<Map<String, Object>> health(){
+    public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> response = Map.of(
-                "status","UP",
+                "status", "UP",
                 "timestamp", LocalDateTime.now().toString(),
                 "message", "App is running"
         );

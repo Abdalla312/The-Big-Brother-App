@@ -1,6 +1,7 @@
 package com.expensetracker.big_brother.transaction;
 
 import com.expensetracker.big_brother.category.Category;
+import com.expensetracker.big_brother.category.dto.CategoryResponse;
 import com.expensetracker.big_brother.transaction.dto.TransactionRequest;
 import com.expensetracker.big_brother.transaction.dto.TransactionResponse;
 import org.mapstruct.Mapper;
@@ -11,7 +12,7 @@ import java.util.List;
 
 @Mapper(componentModel = "spring",
         unmappedTargetPolicy = ReportingPolicy.IGNORE,
-        uses = Category.class)
+        uses = CategoryResponse.class)
 public interface TransactionMapper {
     TransactionResponse toResponse(Transaction transaction);
 

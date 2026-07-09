@@ -8,6 +8,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -31,7 +32,7 @@ public class GlobalExceptionHandler {
             ResourceNotFoundException exception, HttpServletRequest request) {
         log.warn("ResourceNotFoundException: {} - {}", "NOT_FOUND", exception.getMessage());
         ErrorResponse error = new ErrorResponse(
-                404, "Not Found", exception.getMessage(), Instant.now(), request.getRequestURI(), null);
+                404, "NOT_FOUND", exception.getMessage(), Instant.now(), request.getRequestURI(), null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -55,12 +56,26 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, status);
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException exception, HttpServletRequest request) {
+        log.warn("AccessDeniedException: {}", exception.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(
+                403,
+                "FORBIDDEN",
+                exception.getMessage(),
+                Instant.now(),
+                request.getRequestURI(),
+                null
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
+
     @ExceptionHandler(DuplicateResourceException.class)
     public ResponseEntity<ErrorResponse> handleDuplicate(
             DuplicateResourceException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
                 409,
-                "Conflict",
+                "CONFLICT",
                 ex.getMessage(),
                 Instant.now(),
                 request.getRequestURI(),
@@ -74,7 +89,7 @@ public class GlobalExceptionHandler {
             CategoryInUseException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
                 409,
-                "Conflict",
+                "CONFLICT",
                 ex.getMessage(),
                 Instant.now(),
                 request.getRequestURI(),
@@ -106,7 +121,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingParams(MissingServletRequestParameterException exception, WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
-        String path = request.getDescription(false).replace("uri", "");
+        String path = request.getDescription(false).replace("uri=", "");
         log.warn("Missing request parameter: {}", exception.getParameterName());
         ErrorResponse errorResponse = ErrorResponse.of(
                 status.value(),
@@ -123,12 +138,12 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         String path = request.getDescription(false).replace("uri", "");
+        String message= "month".equals(exception.getName())
+                ? "Invalid date format. Use yyyy-MM"
+                : "Invalid value for parameter '" + exception.getName() + "': " + exception.getValue();
         log.warn("Type mismatch for parameter: {}", exception.getName());
         ErrorResponse errorResponse = ErrorResponse.of(
-                status.value(),
-                "BAD_REQUEST",
-                "Invalid value for parameter '" + exception.getName() + "': " + exception.getValue(),
-                path
+                status.value(),"BAD_REQUEST", message, path
         );
         return new ResponseEntity<>(errorResponse, status);
     }
@@ -283,14 +298,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleDateFormat(
-            HttpMessageNotReadableException exception) {
+            HttpMessageNotReadableException exception,
+            WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
-        log.error("Unexpected runtime error", exception);
+        log.warn("Invalid format: {}", exception.getMessage());
+        String path = request.getDescription(false).replace("uri=", "");
         ErrorResponse errorResponse = ErrorResponse.of(
                 status.value(),
                 "BAD_REQUEST",
-                "Invalid date format. Use yyyy-MM-dd",
-                null
+                "Invalid date format. Use yyyy-MM",
+                path
         );
         return new ResponseEntity<>(errorResponse, status);
     }

@@ -26,7 +26,7 @@ public class CategoryController {
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> getAll(
             @AuthenticationPrincipal CustomUserDetails user) {
         List<CategoryResponse> categories = categoryService.getAllCategories(user.getUserId());
-        return ResponseEntity.ok(ApiResponse.ok(categories, "success"));
+        return ResponseEntity.ok(ApiResponse.ok(categories, "Categories retrieved"));
     }
 
     @PostMapping
@@ -42,7 +42,7 @@ public class CategoryController {
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<CategoryResponse>> update(
             @PathVariable UUID id,
-            @RequestBody UpdateCategoryRequest request,
+            @RequestBody @Valid UpdateCategoryRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {
         CategoryResponse response = categoryService.updateCategory(id, request, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(response, "Category updated"));
