@@ -1,0 +1,68 @@
+package com.expensetracker.big_brother.user;
+
+import com.expensetracker.big_brother.exception.DuplicateResourceException;
+import com.expensetracker.big_brother.exception.ResourceNotFoundException;
+import com.expensetracker.big_brother.user.dto.ChangePasswordRequest;
+import com.expensetracker.big_brother.user.dto.DeleteAccountRequest;
+import com.expensetracker.big_brother.user.dto.UpdateProfileRequest;
+import com.expensetracker.big_brother.user.dto.UserResponse;
+import com.expensetracker.big_brother.verification.EmailVerificationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+    private final EmailVerificationService emailVerificationService;
+    private final PasswordEncoder passwordEncoder;
+
+    @Transactional(readOnly = true)
+    public UserResponse getProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        return userMapper.toResponse(user);
+    }
+
+    @Transactional
+    public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
+        User currentUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        if (request.email() != null && request.email().equalsIgnoreCase(currentUser.getEmail())) {
+            if (userRepository.existsByEmail(request.email()))
+                throw new DuplicateResourceException("Email already in use");
+            emailVerificationService.sendEmailChangeVerification(currentUser, request.email());
+        }
+        if (request.name() != null) currentUser.setName(request.name());
+        return userMapper.toResponse(userRepository.save(currentUser));
+    }
+
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteAccount(UUID userId, DeleteAccountRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        userRepository.delete(user);
+
+    }
+
+}

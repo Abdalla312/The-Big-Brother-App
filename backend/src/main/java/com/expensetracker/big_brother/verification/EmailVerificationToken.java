@@ -25,12 +25,17 @@ public class EmailVerificationToken {
     private User user;
 
     @Getter
+    @Column(nullable = true)
+    private String newEmail;  // null for registration token, set = email-change token
+
+    @Getter
     @Column(name = "expires_at",nullable = false)
     private LocalDateTime expiresAt;
 
-    public EmailVerificationToken(String tokenHash, User user, LocalDateTime expiresAt) {
+    public EmailVerificationToken(String tokenHash, User user, String newEmail, LocalDateTime expiresAt) {
         this.tokenHash = tokenHash;
         this.user = user;
+        this.newEmail = newEmail;
         this.expiresAt = expiresAt;
     }
 

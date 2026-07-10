@@ -44,31 +44,47 @@ public class EmailVerificationService {
         EmailVerificationToken token = new EmailVerificationToken(
                 tokenHash,
                 user,
+                null,
                 LocalDateTime.now().plusHours(1));
         verificationRepository.save(token);
-        String verificationLink = backendUrl + "/api/v1/auth/verify-email?userId="
-                + user.getId() + "&token=" + rawToken;
-        String htmlBody = """
-         <!DOCTYPE html>                                                  \s
-         <html>                                                           \s
-         <body style="font-family: Arial, sans-serif; padding: 20px;">    \s
-           <div style="max-width: 600px; margin: auto;">                  \s
-             <h2>Verify your email</h2>                                   \s
-             <p>Hi %s,</p>                                                \s
-             <p>Click the button below to verify your email address:</p>  \s
-             <a href="%s" style="display: inline-block; padding: 12px     \s
-     24px; background: #4F46E5; color: white; text-decoration: none;      \s
-     border-radius: 6px;">Verify Email</a>                                \s
-             <p style="margin-top: 20px; color: #666;">This link expires  \s
-     in 1 hour.</p>                                                       \s
-             <hr style="margin-top: 30px;">                               \s
-             <p style="color: #999; font-size: 12px;">If you didn't       \s
-     create this account, you can ignore this email.</p>                  \s
-           </div>                                                         \s
-         </body>                                                          \s
-         </html>                                                          \s
-        \s""".formatted(user.getName(), verificationLink);
+        String verificationLink = backendUrl + "/api/v1/auth/verify-email?userId=" + user.getId() + "&token=" + rawToken;
+        String htmlBody = buildEmailHtml(
+                user.getName(),
+                "Verify your email",
+                "Click the button below to verify your email address:",
+                verificationLink,
+                "Verify Email",
+                "If you didn't create this account, you can ignore this email.");
         emailService.sendHtml(user.getEmail(),"Verify your email", htmlBody);
+    }
+
+
+    public void sendEmailChangeVerification(User currentUser, String newEmail) {
+        if (userRepository.existsByEmail(newEmail)) {
+            throw new IllegalArgumentException("Email already in use");
+        }
+
+        verificationRepository.deleteByUser(currentUser);
+        verificationRepository.flush();
+        String rawToken = generateToken();
+        String tokenHash = hashToken(rawToken, currentUser.getId());
+        EmailVerificationToken token = new EmailVerificationToken(
+                tokenHash, currentUser, newEmail, LocalDateTime.now().plusHours(1));
+        verificationRepository.save(token);
+
+        String verificationLink = backendUrl + "api/v1/auth/verify-email?userId=" + currentUser.getId() + "&token=" + rawToken;
+
+        String htmlBody = buildEmailHtml(
+                currentUser.getName(),
+                "Confirm your new email",
+                "Click the button below to confirm this is your new email address:",
+                verificationLink,
+                "Confirm Email",
+                "If you didn't request this change, please contact support immediately.");
+        emailService.sendHtml(newEmail, "Confirm your new email", htmlBody);
+        emailService.sendHtml(currentUser.getEmail(), "Email change requested",
+                "A request to change your account email to " + newEmail
+                        + " was made. If this wasn't you, please contact support immediately.");
     }
 
     @Transactional
@@ -86,8 +102,11 @@ public class EmailVerificationService {
             throw new IllegalArgumentException("Verification token expired");
         }
         User user = token.getUser();
-        user.setUserVerified(true);
-
+        if (token.getNewEmail() != null) {
+            user.setEmail(token.getNewEmail());
+        } else {
+            user.setUserVerified(true);
+        }
         userRepository.save(user);
         verificationRepository.delete(token);
     }
@@ -107,5 +126,27 @@ public class EmailVerificationService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("Could not hash verification token", e);
         }
+    }
+
+
+    private String buildEmailHtml(
+            String name, String title, String instruction,
+            String link, String buttonText, String footerNote) {
+        return """
+                <!DOCTYPE html>
+                         <html>
+                         <body style="font-family: Arial, sans-serif; padding: 20px;">
+                           <div style="max-width: 600px; margin: auto;">
+                             <h2>%s</h2>
+                             <p>Hi %s,</p>
+                             <p>%s</p>
+                             <a href="%s" style="display: inline-block; padding: 12px 24px; background: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">%s</a>
+                             <p style="margin-top: 20px; color: #666;">This link expires in 1 hour.</p>
+                             <hr style="margin-top: 30px;">
+                             <p style="color: #999; font-size: 12px;">%s</p>
+                           </div>
+                         </body>
+                         </html>
+                """.formatted(title, name, instruction, link, buttonText, footerNote);
     }
 }
