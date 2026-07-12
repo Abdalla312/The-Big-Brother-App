@@ -8,7 +8,9 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "email_verification_token")
+@Table(name = "email_verification_token", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"user_id"})
+})
 @NoArgsConstructor
 public class EmailVerificationToken {
     @Id

@@ -286,7 +286,7 @@ public class BudgetIntegrationTest extends BaseIntegrationTest {
     void deleteBudget_Success_Returns200() throws Exception {
         Category category = seedCategory("Food", TransactionType.EXPENSE, userA);
         Budget budget = seedBudget(userA, category, YearMonth.now().toString(), new BigDecimal("1000.0"));
-        performDelete("/api/v1/budget/" + budget.getId(), userAPrincipal)
+        performDelete("/api/v1/budget/" + budget.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Budget deleted"));
         assertThat(budgetRepository.findById(budget.getId())).isEmpty();
@@ -295,7 +295,7 @@ public class BudgetIntegrationTest extends BaseIntegrationTest {
     //    │2│Not Found — Budget Does Not Exist│Random {id} UUID│404 Not Found│
     @Test
     void deleteBudget_NonExistentBudget_Returns404() throws Exception {
-        performDelete("/api/v1/budget/" + UUID.randomUUID(), userAPrincipal)
+        performDelete("/api/v1/budget/" + UUID.randomUUID(), userAPrincipal, null)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("NOT_FOUND"))
                 .andExpect(jsonPath("$.message", containsString("Budget not found with id: ")));
@@ -305,7 +305,7 @@ public class BudgetIntegrationTest extends BaseIntegrationTest {
     void deleteBudget_OtherUsersBudget_Returns403() throws Exception {
         Category category = seedCategory("Food", TransactionType.EXPENSE, userB);
         Budget budget = seedBudget(userB, category, YearMonth.now().toString(), new BigDecimal("1000.0"));
-        performDelete("/api/v1/budget/" + budget.getId(), userAPrincipal)
+        performDelete("/api/v1/budget/" + budget.getId(), userAPrincipal, null)
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("FORBIDDEN"))
                 .andExpect(jsonPath("$.message").value("You do not have permission to access this resource"));
@@ -315,7 +315,7 @@ public class BudgetIntegrationTest extends BaseIntegrationTest {
     void deleteBudget_UnAuthorized_Returns401() throws Exception {
         Category category = seedCategory("Food", TransactionType.EXPENSE, userA);
         Budget budget = seedBudget(userA, category, YearMonth.now().toString(), new BigDecimal("1000.0"));
-        performDelete("/api/v1/budget/" + budget.getId(), null)
+        performDelete("/api/v1/budget/" + budget.getId(), null, null)
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"))
                 .andExpect(jsonPath("$.message").value("Full authentication is required to access this resource"));

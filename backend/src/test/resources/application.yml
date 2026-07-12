@@ -12,6 +12,7 @@ spring:
     properties:
       hibernate:
         globally-quoted-identifiers: true
+        auto_quote_keyword: true
   mail:
     host: localhost
     port: 1025

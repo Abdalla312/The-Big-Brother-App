@@ -38,7 +38,7 @@ public class UserController {
             @RequestBody @Valid ChangePasswordRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {
         userService.changePassword(user.getUserId(), request);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Password Updated"));
+        return ResponseEntity.ok(ApiResponse.ok(null, "Password updated"));
     }
 
     @DeleteMapping("/me")

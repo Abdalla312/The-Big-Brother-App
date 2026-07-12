@@ -171,7 +171,7 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
     void deleteCategory_OwnCategory_Returns200() throws Exception {
         Category category = seedCategory("Own Category", TransactionType.EXPENSE, userA);
 
-        performDelete("/api/v1/categories/" + category.getId(), userAPrincipal)
+        performDelete("/api/v1/categories/" + category.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Category deleted"));
         assertFalse(categoryRepository.existsById(category.getId()));
@@ -179,7 +179,7 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void deleteCategory_NonExistentCategory_Returns404() throws Exception {
-        performDelete("/api/v1/categories/" + UUID.randomUUID(), userAPrincipal)
+        performDelete("/api/v1/categories/" + UUID.randomUUID(), userAPrincipal, null)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("NOT_FOUND"));
     }
@@ -187,7 +187,7 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
     @Test
     void deleteCategory_DefaultCategory_Returns403() throws Exception {
         Category defaultCategory = seedCategory("Default Category name", TransactionType.INCOME, null);
-        performDelete("/api/v1/categories/" + defaultCategory.getId(), userAPrincipal)
+        performDelete("/api/v1/categories/" + defaultCategory.getId(), userAPrincipal, null)
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("FORBIDDEN"));
     }
@@ -196,7 +196,7 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
     void deleteCategory_OtherUsersCategory_Returns403() throws Exception {
         Category userBCategory = seedCategory("User B Category", TransactionType.EXPENSE, userB);
 
-        performDelete("/api/v1/categories/" + userBCategory.getId(), userAPrincipal)
+        performDelete("/api/v1/categories/" + userBCategory.getId(), userAPrincipal, null)
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("FORBIDDEN"));
     }
@@ -206,7 +206,7 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
         Category category = seedCategory("Rent", TransactionType.EXPENSE, userA);
         seedTransaction(new BigDecimal("1200.0"), LocalDate.now(), userA, category);
 
-        performDelete("/api/v1/categories/" + category.getId(), userAPrincipal)
+        performDelete("/api/v1/categories/" + category.getId(), userAPrincipal, null)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICT"));
     }
@@ -215,7 +215,7 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
     void deleteCategory_UnAuthorized_Returns401() throws Exception {
         Category category = seedCategory("Rent", TransactionType.INCOME, userA);
 
-        performDelete("/api/v1/categories/" + category.getId(), null)
+        performDelete("/api/v1/categories/" + category.getId(), null, null)
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }

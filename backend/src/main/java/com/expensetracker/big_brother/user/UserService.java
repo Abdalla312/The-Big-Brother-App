@@ -34,7 +34,7 @@ public class UserService {
     public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
-        if (request.email() != null && request.email().equalsIgnoreCase(currentUser.getEmail())) {
+        if (request.email() != null && !request.email().equalsIgnoreCase(currentUser.getEmail())) {
             if (userRepository.existsByEmail(request.email()))
                 throw new DuplicateResourceException("Email already in use");
             emailVerificationService.sendEmailChangeVerification(currentUser, request.email());

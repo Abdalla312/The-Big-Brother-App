@@ -73,11 +73,12 @@ public abstract class BaseIntegrationTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    protected ResultActions performDelete(String url, CustomUserDetails principal) throws Exception {
+    protected ResultActions performDelete(String url, CustomUserDetails principal, Object request) throws Exception {
         var requestBuilder = delete(url).contentType(MediaType.APPLICATION_JSON);
         if (principal != null) {
             requestBuilder.with(user(principal));
         }
+        if (request != null ) requestBuilder.content(objectMapper.writeValueAsString(request));
         return mockMvc.perform(requestBuilder);
     }
 
