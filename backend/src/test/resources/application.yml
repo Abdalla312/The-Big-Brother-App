@@ -26,9 +26,11 @@ spring:
 
 app:
   backend-url: http://localhost:8080
+  rate-limit:
+    enabled: false
+    capacity: 5
+    refill-rate: 1
+    refill-period-seconds: 60
   jwt:
     secret: MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=
     access-token-expiry-ms: 9000000
-
-rate-limit:
-  enabled: false

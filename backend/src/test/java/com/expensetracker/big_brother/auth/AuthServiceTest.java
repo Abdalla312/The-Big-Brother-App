@@ -198,17 +198,6 @@ public class AuthServiceTest {
     }
 
     @Test
-    void resendVerification_cooldown_throwsTooManyRequests() {
-        ResendVerificationRequest request = aResendRequest();
-        User user = anUnVerifiedUser();
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
-
-        authService.resendVerification(request);
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> authService.resendVerification(request));
-        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-    }
-
-    @Test
     void resendVerification_alreadyVerified_doesNothing() {
         ResendVerificationRequest request = aResendRequest();
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(aVerifiedUser()));

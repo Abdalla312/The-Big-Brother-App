@@ -72,7 +72,7 @@ public class EmailVerificationService {
                 tokenHash, currentUser, newEmail, LocalDateTime.now().plusHours(1));
         verificationRepository.save(token);
 
-        String verificationLink = backendUrl + "api/v1/auth/verify-email?userId=" + currentUser.getId() + "&token=" + rawToken;
+        String verificationLink = backendUrl + "/api/v1/auth/verify-email?userId=" + currentUser.getId() + "&token=" + rawToken;
 
         String htmlBody = buildEmailHtml(
                 currentUser.getName(),

@@ -27,14 +27,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthService {
-    private static final long COOLDOWN_SECONDS = 300;
-    // dependencies
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationService emailVerificationService;
     private final AuthenticationManager authManager;
     private final JwtService jwtService;
-    private final Map<String, Instant> lastSeen = new ConcurrentHashMap<>();
 
     AuthService(JwtService jwtService,
                 UserRepository userRepository,
@@ -46,14 +44,6 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.emailVerificationService = emailVerificationService;
         this.authManager = authManager;
-    }
-
-    private void checkCooldown(String email) {
-        Instant last = lastSeen.get(email);
-        if (last != null && Duration.between(last, Instant.now()).getSeconds() < COOLDOWN_SECONDS) {
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                    "Please wait before requesting another email");
-        }
     }
 
     // Register
@@ -117,13 +107,9 @@ public class AuthService {
 
     public void resendVerification(ResendVerificationRequest request) {
         String email = request.getEmail().trim().toLowerCase();
-        checkCooldown(email);
         userRepository.findByEmail(email)
                 .filter(u -> !u.isUserVerified())
-                .ifPresent(u -> {
-                    emailVerificationService.sendVerificationEmail(u);
-                    lastSeen.put(email, Instant.now());
-                });
+                .ifPresent(emailVerificationService::sendVerificationEmail);
     }
 }
 

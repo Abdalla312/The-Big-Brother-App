@@ -42,6 +42,11 @@ server:
 
 app:
   backend-url: ${APP_BACKEND_URL}
+  rate-limit:
+    enabled: true
+    capacity: 5
+    refill-rate: 1
+    refill-period-seconds: 60
   jwt:
     secret: ${JWT_SECRET}
     access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:86400000}
