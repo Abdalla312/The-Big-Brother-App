@@ -3,6 +3,7 @@ package com.expensetracker.big_brother.user;
 
 import com.expensetracker.big_brother.exception.DuplicateResourceException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
+import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
 import com.expensetracker.big_brother.user.dto.ChangePasswordRequest;
 import com.expensetracker.big_brother.user.dto.DeleteAccountRequest;
 import com.expensetracker.big_brother.user.dto.UpdateProfileRequest;
@@ -31,6 +32,8 @@ public class UserServiceTest {
     UserMapper userMapper;
     @Mock
     PasswordEncoder passwordEncoder;
+    @Mock
+    RefreshTokenService refreshTokenService;
     @InjectMocks
     UserService userService;
 
@@ -126,6 +129,7 @@ public class UserServiceTest {
         when(userRepository.save(user)).thenReturn(user);
         userService.changePassword(userId, request);
         verify(userRepository).save(any(User.class));
+        verify(refreshTokenService).revokeAllUserTokens(userId);
     }
 
     @Test
@@ -150,6 +154,7 @@ public class UserServiceTest {
         when(passwordEncoder.matches(request.password(), user.getPasswordHash())).thenReturn(true);
         userService.deleteAccount(userId, request);
         verify(userRepository).delete(user);
+        verify(refreshTokenService).revokeAllUserTokens(userId);
     }
 
     @Test

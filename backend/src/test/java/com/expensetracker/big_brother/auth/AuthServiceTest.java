@@ -4,6 +4,7 @@ import com.expensetracker.big_brother.auth.dto.AuthResponse;
 import com.expensetracker.big_brother.auth.dto.LoginRequest;
 import com.expensetracker.big_brother.auth.dto.RegisterRequest;
 import com.expensetracker.big_brother.auth.dto.ResendVerificationRequest;
+import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
 import com.expensetracker.big_brother.user.Role;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
@@ -42,6 +43,7 @@ public class AuthServiceTest {
     private EmailVerificationService emailVerificationService;
     @Mock
     private JwtService jwtService;
+    @Mock private RefreshTokenService refreshTokenService;
     @InjectMocks
     private AuthService authService;
 
@@ -132,10 +134,13 @@ public class AuthServiceTest {
         User user = aVerifiedUser();
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
         when(jwtService.generateToken(any())).thenReturn("jwt-token");
+        when(refreshTokenService.generateRefreshToken(any())).thenReturn("refresh-token");
 
         AuthResponse response = authService.login(request);
 
         assertThat(response.getAccessToken()).isEqualTo("jwt-token");
+        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
+
         assertThat(response.getEmail()).isEqualTo("test@example.com");
         assertThat(response.isVerified()).isTrue();
         verify(authenticationManager).authenticate(any());

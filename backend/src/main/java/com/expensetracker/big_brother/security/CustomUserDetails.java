@@ -52,4 +52,8 @@ public class CustomUserDetails implements UserDetails {
     public boolean isEnabled() {
         return user.isUserVerified();
     }
+
+    public int getTokenVersion() {
+        return user.getTokenVersion();
+    }
 }

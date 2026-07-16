@@ -37,6 +37,8 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Column(nullable = false)
+    private int tokenVersion = 0;
 
     @Column(nullable = false )
     private boolean userVerified = false;

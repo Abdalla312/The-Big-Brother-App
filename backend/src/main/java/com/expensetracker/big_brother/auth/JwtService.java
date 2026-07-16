@@ -37,6 +37,7 @@ public class JwtService {
                 .subject(userDetails.getUsername())
                 .claim("userId", userDetails.getUserId())
                 .claim("role", role)
+                .claim("tokenVersion", userDetails.getTokenVersion())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiryMs))
                 .signWith(getSignKey())
@@ -66,6 +67,10 @@ public class JwtService {
 
     public boolean isTokenValid(String jwtToken, CustomUserDetails userDetails) {
         String username = extractUserName(jwtToken);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(jwtToken);
+        Integer tokenVersion = extractClaims(jwtToken, c -> c.get("tokenVersion", Integer.class));
+        return username.equals(userDetails.getUsername())
+                && tokenVersion != null
+                && tokenVersion == userDetails.getTokenVersion()
+                && !isTokenExpired(jwtToken);
     }
 }

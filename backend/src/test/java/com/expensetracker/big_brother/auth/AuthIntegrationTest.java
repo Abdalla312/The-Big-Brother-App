@@ -56,7 +56,7 @@ public class AuthIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.message").value("Registration successful. Please verify your email before logging in."));
+                .andExpect(jsonPath("$.message").value("A verification link has been sent"));
     }
 
     @Test

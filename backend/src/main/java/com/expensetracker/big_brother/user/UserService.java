@@ -2,6 +2,7 @@ package com.expensetracker.big_brother.user;
 
 import com.expensetracker.big_brother.exception.DuplicateResourceException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
+import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
 import com.expensetracker.big_brother.user.dto.ChangePasswordRequest;
 import com.expensetracker.big_brother.user.dto.DeleteAccountRequest;
 import com.expensetracker.big_brother.user.dto.UpdateProfileRequest;
@@ -22,6 +23,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final EmailVerificationService emailVerificationService;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional(readOnly = true)
     public UserResponse getProfile(UUID userId) {
@@ -50,8 +52,10 @@ public class UserService {
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Current password is incorrect");
         }
+        user.setTokenVersion(user.getTokenVersion() + 1);
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
+        refreshTokenService.revokeAllUserTokens(userId);
     }
 
     @Transactional
@@ -61,6 +65,7 @@ public class UserService {
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Current password is incorrect");
         }
+        refreshTokenService.revokeAllUserTokens(userId);
         userRepository.delete(user);
 
     }

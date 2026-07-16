@@ -49,4 +49,5 @@ app:
     refill-period-seconds: 60
   jwt:
     secret: ${JWT_SECRET}
-    access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:86400000}
+    access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000}
+    refresh-token-expiry-days: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:30}

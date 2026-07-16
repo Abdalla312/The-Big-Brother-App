@@ -4,12 +4,14 @@ import com.expensetracker.big_brother.auth.dto.AuthResponse;
 import com.expensetracker.big_brother.auth.dto.LoginRequest;
 import com.expensetracker.big_brother.auth.dto.RegisterRequest;
 import com.expensetracker.big_brother.auth.dto.ResendVerificationRequest;
+import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.user.Role;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
 import com.expensetracker.big_brother.verification.EmailVerificationService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DisabledException;
@@ -19,13 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -33,18 +32,7 @@ public class AuthService {
     private final EmailVerificationService emailVerificationService;
     private final AuthenticationManager authManager;
     private final JwtService jwtService;
-
-    AuthService(JwtService jwtService,
-                UserRepository userRepository,
-                PasswordEncoder passwordEncoder,
-                EmailVerificationService emailVerificationService,
-                AuthenticationManager authManager) {
-        this.jwtService = jwtService;
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.emailVerificationService = emailVerificationService;
-        this.authManager = authManager;
-    }
+    private final RefreshTokenService refreshTokenService;
 
     // Register
     public AuthResponse register(@Valid RegisterRequest request) {
@@ -86,9 +74,13 @@ public class AuthService {
         }
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
-        String token = jwtService.generateToken(new CustomUserDetails(user));
+
+        String accessToken = jwtService.generateToken(new CustomUserDetails(user));
+        String refreshToken = refreshTokenService.generateRefreshToken(user);
+
         return AuthResponse.builder()
-                .accessToken(token)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .name(user.getName())
                 .email(user.getEmail())
                 .verified(user.isUserVerified())

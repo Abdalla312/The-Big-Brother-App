@@ -58,11 +58,12 @@ public class EmailVerificationService {
         emailService.sendHtml(user.getEmail(),"Verify your email", htmlBody);
     }
 
-
+    @Transactional
     public void sendEmailChangeVerification(User currentUser, String newEmail) {
         if (userRepository.existsByEmail(newEmail)) {
             throw new IllegalArgumentException("Email already in use");
         }
+        if (verificationRepository.existsByUserAndExpiresAtAfter(currentUser, LocalDateTime.now())) return;
 
         verificationRepository.deleteByUser(currentUser);
         verificationRepository.flush();

@@ -15,4 +15,6 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
             User user, LocalDateTime now);
 
     void deleteByUser(User user);
+
+    boolean existsByUserAndExpiresAtAfter(User user, LocalDateTime now);
 }
