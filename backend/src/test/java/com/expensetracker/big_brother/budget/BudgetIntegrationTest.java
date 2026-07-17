@@ -41,18 +41,19 @@ public class BudgetIntegrationTest extends BaseIntegrationTest {
         seedTransaction(new BigDecimal("50.00"), LocalDate.of(2026, 7, 15), userA, category);
         performGet("/api/v1/budget?month=2026-07", userAPrincipal)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].limitAmount").value("1000.0"))
-                .andExpect(jsonPath("$.data[0].spentAmount").value("200.0"))
-                .andExpect(jsonPath("$.data[0].remainingAmount").value("800.0"))
-                .andExpect(jsonPath("$.data[0].percentUsed").value("20.0"));
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].limitAmount").value("1000.0"))
+                .andExpect(jsonPath("$.data.content[0].spentAmount").value("200.0"))
+                .andExpect(jsonPath("$.data.content[0].remainingAmount").value("800.0"))
+                .andExpect(jsonPath("$.data.content[0].percentUsed").value("20.0"));
     }
 
     @Test
     void getBudgets_NoBudgetsFound_Returns200() throws Exception {
         performGet("/api/v1/budget?month=2026-06", userAPrincipal)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(0)));
+                .andExpect(jsonPath("$.data.content", hasSize(0)))
+                .andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     @Test

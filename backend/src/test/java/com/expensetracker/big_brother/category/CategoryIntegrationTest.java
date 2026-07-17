@@ -35,16 +35,47 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
 
     // GET
     @Test
-    void getCategories_ReturnsOnlyDefaultAndOwnCategories() throws Exception {
+    void getCategories_ReturnsOwnCategories() throws Exception {
         seedCategory("Food (Default)", TransactionType.EXPENSE, null);
         seedCategory("Salary (User A)", TransactionType.INCOME, userA);
         seedCategory("Business (User B)", TransactionType.INCOME, userB);
 
         performGet("/api/v1/categories", userAPrincipal)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(2)))
-                .andExpect(jsonPath("$.data[0].name").value("Food (Default)"))
-                .andExpect(jsonPath("$.data[1].name").value("Salary (User A)"));
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].name").value("Salary (User A)"));
+    }
+    @Test
+    void getCategories_typeUser_ReturnsOnlyUserCategories() throws Exception{
+        seedCategory("Food (Default)", TransactionType.EXPENSE, null);
+        seedCategory("Salary (User A)", TransactionType.INCOME, userA);
+        seedCategory("Business (User B)", TransactionType.INCOME, userB);
+        performGet("/api/v1/categories?type=user", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].name").value("Salary (User A)"));
+    }
+
+    @Test
+    void getCategories_typeDefault_ReturnsOnlyDefaultCategories() throws Exception{
+        seedCategory("Food (Default)", TransactionType.EXPENSE, null);
+        seedCategory("Salary (User A)", TransactionType.INCOME, userA);
+        seedCategory("Business (User B)", TransactionType.INCOME, userB);
+        performGet("/api/v1/categories?type=default", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].name").value("Food (Default)"));
+    }
+
+    @Test
+    void getCategories_typeAll_ReturnsBoth() throws Exception{
+        seedCategory("Food (Default)", TransactionType.EXPENSE, null);
+        seedCategory("Salary (User A)", TransactionType.INCOME, userA);
+        seedCategory("Business (User B)", TransactionType.INCOME, userB);
+        performGet("/api/v1/categories?type=all", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(2)))
+                .andExpect(jsonPath("$.data.content[0].name").value("Food (Default)"));
     }
 
     @Test

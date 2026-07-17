@@ -5,6 +5,7 @@ import com.expensetracker.big_brother.budget.dto.BudgetResponse;
 import com.expensetracker.big_brother.budget.dto.UpdateBudgetRequest;
 import com.expensetracker.big_brother.category.Category;
 import com.expensetracker.big_brother.category.CategoryRepository;
+import com.expensetracker.big_brother.common.PageResponse;
 import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.DuplicateResourceException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
@@ -15,6 +16,8 @@ import com.expensetracker.big_brother.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +25,6 @@ import java.math.BigDecimal;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -38,23 +40,22 @@ public class BudgetService {
 
     // list all budgets in a month
     @Transactional(readOnly = true)
-    public List<BudgetResponse> getBudgets(UUID userId, String month) {
+    public PageResponse<BudgetResponse> getBudgets(UUID userId, String month, Pageable pageable) {
         YearMonth yearMonth;
         try{
-            yearMonth = YearMonth.parse(month);
+        yearMonth = YearMonth.parse(month);
         } catch (DateTimeException e) {
             throw new IllegalArgumentException("Invalid date format. Use yyyy-MM");
         }
-        List<Budget> budgets = budgetRepository.findAllByUserIdAndMonth(userId, month);
-
+        Page<Budget> budgets = budgetRepository.findAllByUserIdAndMonth(userId, month, pageable);
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
-
-        return budgets.stream().map(budget -> {
+        Page<BudgetResponse> responsePage = budgets.map(budget -> {
             BigDecimal spent = transactionRepository
                     .sumExpensesByUserAndCategoryAndDateRange(userId, budget.getCategory().getId(), startDate, endDate);
             return budgetMapper.toResponseWithCalculations(budget, spent);
-        }).toList();
+        });
+        return PageResponse.from(responsePage);
     }
 
     // create new budget

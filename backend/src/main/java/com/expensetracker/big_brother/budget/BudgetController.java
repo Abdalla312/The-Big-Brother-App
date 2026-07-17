@@ -4,15 +4,17 @@ import com.expensetracker.big_brother.budget.dto.BudgetRequest;
 import com.expensetracker.big_brother.budget.dto.BudgetResponse;
 import com.expensetracker.big_brother.budget.dto.UpdateBudgetRequest;
 import com.expensetracker.big_brother.common.ApiResponse;
+import com.expensetracker.big_brother.common.PageResponse;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -22,9 +24,12 @@ public class BudgetController {
     private final BudgetService budgetService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<BudgetResponse>>> getBudgets(@AuthenticationPrincipal CustomUserDetails user, @RequestParam String month) {
-        List<BudgetResponse> responseList = budgetService.getBudgets(user.getUserId(), month);
-        return ResponseEntity.ok(ApiResponse.ok(responseList, "Budgets retrieved"));
+    public ResponseEntity<ApiResponse<PageResponse<BudgetResponse>>> getBudgets(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam String month,
+            @PageableDefault(size = 20)Pageable pageable) {
+        PageResponse<BudgetResponse> response = budgetService.getBudgets(user.getUserId(), month, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(response, "Budgets retrieved"));
     }
 
     @PostMapping

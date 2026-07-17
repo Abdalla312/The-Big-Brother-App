@@ -3,6 +3,7 @@ package com.expensetracker.big_brother.category;
 import com.expensetracker.big_brother.category.dto.CategoryResponse;
 import com.expensetracker.big_brother.category.dto.CreateCategoryRequest;
 import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
+import com.expensetracker.big_brother.common.PageResponse;
 import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.CategoryInUseException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
@@ -13,9 +14,12 @@ import com.expensetracker.big_brother.user.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -28,16 +32,16 @@ public class CategoryService {
     private final OwnershipValidator ownershipValidator;
     private final TransactionRepository transactionRepository;
 
-    // returns all categories visible to user
-    // - system defaults userId is NULL
-    // - user's own custom categories
-    public List<CategoryResponse> getAllCategories(UUID userId) {
-        List<Category> categories = categoryRepository.findAllByUserIdOrUserIsNull(userId);
-        return categoryMapper.toResponseList(categories);
+    public PageResponse<CategoryResponse> getAllCategories(UUID userId, String type, Pageable pageable) {
+        Page<Category> categories;
+        switch (type) {
+            case "default" -> categories = categoryRepository.findAllByUserIdIsNull(pageable);
+            case "all" -> categories = categoryRepository.findAllByUserIdOrUserIsNull(userId, pageable);
+            default -> categories = categoryRepository.findAllByUserId(userId, pageable);
+        }
+        return PageResponse.from(categories.map(categoryMapper::toResponse));
     }
 
-    // creates a new custom category for the user
-    // it's owned by the user other users cannot see it
     public CategoryResponse createCategory(@Valid CreateCategoryRequest request, UUID userId) {
         Category category = categoryMapper.toEntity(request);
         User user = userRepository.findById(userId)
@@ -48,11 +52,6 @@ public class CategoryService {
         return categoryMapper.toResponse(category);
     }
 
-    // updates existing category.
-    // rules:
-    // - category must exist (else 404)
-    // - category must belong to the current user (else 403)
-    // - system defaults (user_id  = NULL) cannot be edited (else 403)
     public CategoryResponse updateCategory(UUID categoryId, UpdateCategoryRequest request, UUID currentUserId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
@@ -69,8 +68,7 @@ public class CategoryService {
         Category saved = categoryRepository.save(category);
         return categoryMapper.toResponse(saved);
     }
-    // deletes a category
-    // must check if any transactions use this category before deleting.
+
     public void deleteCategory(UUID categoryId, UUID userId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category Not found"));

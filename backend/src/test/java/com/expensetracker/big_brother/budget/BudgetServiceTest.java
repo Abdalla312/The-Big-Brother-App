@@ -6,6 +6,7 @@ import com.expensetracker.big_brother.budget.dto.UpdateBudgetRequest;
 import com.expensetracker.big_brother.category.Category;
 import com.expensetracker.big_brother.category.CategoryRepository;
 import com.expensetracker.big_brother.category.dto.CategoryResponse;
+import com.expensetracker.big_brother.common.PageResponse;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.DuplicateResourceException;
@@ -20,8 +21,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.DateTimeException;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -102,35 +107,37 @@ public class BudgetServiceTest {
         Budget budget = aBudget();
         BigDecimal spent = new BigDecimal("50.00");
         BudgetResponse response = aBudgetResponse(budget, spent);
+        Page<Budget> page = new PageImpl<>(List.of(budget));
 
-        when(budgetRepository.findAllByUserIdAndMonth(userId, month)).thenReturn(List.of(budget));
+        when(budgetRepository.findAllByUserIdAndMonth(eq(userId), eq(month), any(Pageable.class))).thenReturn(page);
 
         when(transactionRepository.sumExpensesByUserAndCategoryAndDateRange(
                 userId, categoryId, YearMonth.now().atDay(1), YearMonth.now().atEndOfMonth()))
                 .thenReturn(spent);
-
         when(budgetMapper.toResponseWithCalculations(budget, spent)).thenReturn(response);
 
-        List<BudgetResponse> result = budgetService.getBudgets(userId, month);
+        PageResponse<BudgetResponse> result = budgetService.getBudgets(userId, month, Pageable.ofSize(20));
 
-        assertThat(result).hasSize(1);
-        assertThat(result.getFirst().spentAmount()).isEqualByComparingTo(spent);
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().getFirst().spentAmount()).isEqualByComparingTo(spent);
 
+        verify(budgetRepository).findAllByUserIdAndMonth(eq(userId), eq(month), any(Pageable.class));
         verify(transactionRepository).sumExpensesByUserAndCategoryAndDateRange(userId, categoryId, YearMonth.now().atDay(1), YearMonth.now().atEndOfMonth());
     }
 
     @Test
     void getBudgets_NoBudgets() {
-        when(budgetRepository.findAllByUserIdAndMonth(userId, month)).thenReturn(List.of());
-        List<BudgetResponse> result = budgetService.getBudgets(userId, month);
+        when(budgetRepository.findAllByUserIdAndMonth(eq(userId), eq(month), any(Pageable.class))).thenReturn(Page.empty());
 
-        assertThat(result).isEmpty();
+        PageResponse<BudgetResponse> result = budgetService.getBudgets(userId, month, Pageable.ofSize(20));
+
+        assertThat(result.content()).isEmpty();
         verify(transactionRepository, never()).sumExpensesByUserAndCategoryAndDateRange(any(), any(), any(), any());
     }
 
     @Test
     void getBudgets_invalidMonth_throwsException() {
-        assertThatThrownBy(() -> budgetService.getBudgets(userId, "abc"))
+        assertThatThrownBy(() -> budgetService.getBudgets(userId, "abc", Pageable.ofSize(20)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
