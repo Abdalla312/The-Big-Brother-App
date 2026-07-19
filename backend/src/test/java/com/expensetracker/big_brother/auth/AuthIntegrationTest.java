@@ -1,36 +1,26 @@
 package com.expensetracker.big_brother.auth;
 
+import com.expensetracker.big_brother.BaseIntegrationTest;
 import com.expensetracker.big_brother.auth.dto.LoginRequest;
+import com.expensetracker.big_brother.auth.dto.RefreshRequest;
 import com.expensetracker.big_brother.auth.dto.RegisterRequest;
 import com.expensetracker.big_brother.mail.EmailService;
-import com.expensetracker.big_brother.user.UserRepository;
+import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.verification.EmailVerificationRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-public class AuthIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private UserRepository userRepository;
+public class AuthIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private EmailVerificationRepository verificationRepository;
@@ -40,64 +30,107 @@ public class AuthIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        clearDatabase();
         verificationRepository.deleteAll();
-        userRepository.deleteAll();
+    }
+
+    private String[] loginUser(String email) throws Exception {
+        LoginRequest loginRequest = new LoginRequest(email, "hashed");
+
+        String response = performPost("/api/v1/auth/login", null, loginRequest)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode json = objectMapper.readTree(response);
+        String accessToken = json.path("data").path("accessToken").asText();
+        String refreshToken = json.path("data").path("refreshToken").asText();
+        return new String[]{accessToken, refreshToken};
     }
 
     @Test
-    void shouldRegisterSuccessfully() throws Exception {
-        RegisterRequest request = new RegisterRequest();
-        request.setName("John Doe");
-        
-        request.setEmail("john@example.com");
-        request.setPassword("password123");
+    void register_ValidRequest_Returns201() throws Exception {
+        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "password123");
 
-        mockMvc.perform(post("/api/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        performPost("/api/v1/auth/register", null, request)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("A verification link has been sent"));
     }
 
     @Test
-    void shouldFailOnDuplicateEmail() throws Exception {
-        RegisterRequest request = new RegisterRequest();
-        request.setName("John Doe");
-        
-        request.setEmail("john2@example.com");
-        request.setPassword("password123");
+    void register_DuplicateEmail_Returns409() throws Exception {
+        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "password123");
 
-        mockMvc.perform(post("/api/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        performPost("/api/v1/auth/register", null, request)
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/api/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isConflict()); // typically duplicate is conflict or bad request
+        performPost("/api/v1/auth/register", null, request)
+                .andExpect(status().isConflict());
     }
 
     @Test
-    void shouldFailLoginBeforeVerification() throws Exception {
-        RegisterRequest request = new RegisterRequest();
-        request.setName("John Doe");
-        
-        request.setEmail("john3@example.com");
-        request.setPassword("password123");
+    void login_BeforeVerification_Returns403() throws Exception {
+        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "password123");
 
-        mockMvc.perform(post("/api/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        performPost("/api/v1/auth/register", null, request)
                 .andExpect(status().isCreated());
 
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("john3@example.com");
-        loginRequest.setPassword("password123");
+        LoginRequest loginRequest = new LoginRequest("john@example.com", "password123");
 
-        mockMvc.perform(post("/api/v1/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(loginRequest)))
+        performPost("/api/v1/auth/login", null, loginRequest)
                 .andExpect(status().isForbidden()); 
+    }
+
+    @Test
+    void login_ValidRequest_Return200() throws Exception {
+        User user = seedUser("auth-refresh@example.com", "Refresh User");
+        String[] tokens = loginUser(user.getEmail());
+
+        assertThat(tokens[1]).isNotNull();
+        assertThat(tokens[1]).isNotEmpty();
+    }
+
+    @Test
+    void refresh_ValidToken_Returns200() throws Exception {
+        User user = seedUser("auth-refresh@example.com", "Refresh User");
+        String[] tokens = loginUser(user.getEmail());
+
+        RefreshRequest refreshRequest = new RefreshRequest(tokens[1]);
+
+        performPost("/api/v1/auth/refresh", null, refreshRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
+    }
+
+    @Test
+    void refresh_InvalidToken_Returns400() throws Exception {
+        RefreshRequest request = new RefreshRequest("garbage-token-value");
+
+        performPost("/api/v1/auth/refresh", null, request)
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void logout_ValidToken_Returns200() throws Exception {
+        User user = seedUser("auth-logout@example.com", "Logout User");
+        String[] tokens = loginUser(user.getEmail());
+
+        RefreshRequest logoutRequest = new RefreshRequest(tokens[1]);
+
+        performPost("/api/v1/auth/logout", null, logoutRequest)
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void logout_ThenRefreshFails_Returns400() throws Exception {
+        User user = seedUser("auth-logout@example.com", "Logout User");
+        String[] tokens = loginUser(user.getEmail());
+
+        RefreshRequest logoutRequest = new RefreshRequest(tokens[1]);
+
+        performPost("/api/v1/auth/logout", null, logoutRequest)
+                .andExpect(status().isOk());
+        RefreshRequest request = new RefreshRequest(tokens[1]);
+        performPost("/api/v1/auth/refresh", null, request)
+                .andExpect(status().isBadRequest());
     }
 }

@@ -36,15 +36,15 @@ public class AuthService {
 
     // Register
     public AuthResponse register(@Valid RegisterRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase();
 
         if (userRepository.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
         User user = new User();
-        user.setName(request.getName().trim());
+        user.setName(request.name().trim());
         user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setRole(Role.USER);
         user.setUserVerified(false);
 
@@ -52,21 +52,19 @@ public class AuthService {
 
         emailVerificationService.sendVerificationEmail(savedUser);
 
-        return AuthResponse
-                .builder()
-                .name(savedUser.getName())
-                .email(savedUser.getEmail())
-                .verified(savedUser.isUserVerified())
-                .message("Registration successful. Please verify your email before logging in.")
-                .build();
+        return new AuthResponse(
+                null, null,
+                savedUser.getName(),
+                savedUser.getEmail(),
+                savedUser.isUserVerified());
     }
 
     // Login
     public AuthResponse login(LoginRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase();
 
         try {
-            authManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.getPassword()));
+            authManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.password()));
         } catch (DisabledException exception) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email before logging in");
         } catch (AuthenticationException exception) {
@@ -78,14 +76,12 @@ public class AuthService {
         String accessToken = jwtService.generateToken(new CustomUserDetails(user));
         String refreshToken = refreshTokenService.generateRefreshToken(user);
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .name(user.getName())
-                .email(user.getEmail())
-                .verified(user.isUserVerified())
-                .message("Login Successful.")
-                .build();
+        return new AuthResponse(
+                accessToken,
+                refreshToken,
+                user.getName(),
+                user.getEmail(),
+                user.isUserVerified());
     }
 
     // verify email
@@ -98,7 +94,7 @@ public class AuthService {
     }
 
     public void resendVerification(ResendVerificationRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase();
         userRepository.findByEmail(email)
                 .filter(u -> !u.isUserVerified())
                 .ifPresent(emailVerificationService::sendVerificationEmail);

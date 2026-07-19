@@ -9,4 +9,4 @@ CREATE TABLE refresh_token (
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     updated_at TIMESTAMP
 );
-CREATE INDEX idx_refresh_token_user ON refresh_token(id);
+CREATE INDEX idx_refresh_token_user ON refresh_token(user_id);

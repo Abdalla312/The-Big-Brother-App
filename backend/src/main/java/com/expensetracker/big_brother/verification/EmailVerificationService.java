@@ -37,6 +37,7 @@ public class EmailVerificationService {
 
     @Transactional
     public void sendVerificationEmail(User user) {
+        if (verificationRepository.existsByUserAndExpiresAtAfter(user, LocalDateTime.now())) return;
         verificationRepository.deleteByUser(user);
         verificationRepository.flush();
         String rawToken = generateToken();

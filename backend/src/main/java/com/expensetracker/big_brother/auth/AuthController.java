@@ -21,7 +21,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@RequestBody @Valid RegisterRequest request) {
         AuthResponse response = authService.register(request);
-        return ResponseEntity.created(URI.create("/api/v1/auth/register")).body(ApiResponse.ok(response, "A verification link has been sent"));
+        return ResponseEntity.created(URI.create("/api/v1/auth/register")).body(ApiResponse.created(response, "A verification link has been sent"));
     }
 
     @PostMapping("/login")
