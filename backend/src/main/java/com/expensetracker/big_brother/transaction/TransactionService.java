@@ -109,7 +109,8 @@ public class TransactionService {
         Transaction saved = transactionRepository.save(transaction);
         return transactionMapper.toResponse(saved);
     }
-    // delete certain transaction assigned to user
+
+    @Transactional
     public void deleteTransaction(UUID transactionId, UUID currentUserId) {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", transactionId));

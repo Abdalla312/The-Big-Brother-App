@@ -1,14 +1,11 @@
 package com.expensetracker.big_brother.auth.dto;
 
-import lombok.Builder;
-import lombok.Data;
+public record AuthResponse(
+        String accessToken,
+        String refreshToken,
+        String name,
+        String email,
+        boolean verified
+) {
 
-@Data
-@Builder
-public class AuthResponse {
-    private String accessToken;
-    private String name;
-    private String email;
-    private boolean verified;
-    private String message;
 }

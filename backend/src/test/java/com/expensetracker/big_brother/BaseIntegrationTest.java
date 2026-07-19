@@ -5,6 +5,7 @@ import com.expensetracker.big_brother.budget.BudgetRepository;
 import com.expensetracker.big_brother.category.Category;
 import com.expensetracker.big_brother.category.CategoryRepository;
 import com.expensetracker.big_brother.common.TransactionType;
+import com.expensetracker.big_brother.refreshtoken.RefreshTokenRepository;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.transaction.Transaction;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
@@ -43,6 +44,8 @@ public abstract class BaseIntegrationTest {
     protected BudgetRepository budgetRepository;
     @Autowired
     protected PasswordEncoder passwordEncoder;
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
 
     // HTTP Request helper methods
     protected ResultActions performGet(String url, CustomUserDetails principal) throws Exception {
@@ -73,11 +76,12 @@ public abstract class BaseIntegrationTest {
         return mockMvc.perform(requestBuilder);
     }
 
-    protected ResultActions performDelete(String url, CustomUserDetails principal) throws Exception {
+    protected ResultActions performDelete(String url, CustomUserDetails principal, Object request) throws Exception {
         var requestBuilder = delete(url).contentType(MediaType.APPLICATION_JSON);
         if (principal != null) {
             requestBuilder.with(user(principal));
         }
+        if (request != null ) requestBuilder.content(objectMapper.writeValueAsString(request));
         return mockMvc.perform(requestBuilder);
     }
 
@@ -125,6 +129,7 @@ public abstract class BaseIntegrationTest {
     protected void clearDatabase() {
         budgetRepository.deleteAll();
         transactionRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         categoryRepository.deleteAll();
         userRepository.deleteAll();
     }

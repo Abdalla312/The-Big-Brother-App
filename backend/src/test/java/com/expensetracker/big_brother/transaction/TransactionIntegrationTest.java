@@ -187,7 +187,7 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
     @Test
     void deleteTransaction_OwnTransaction_Returns200() throws Exception {
         Transaction transaction = seedTransaction(new BigDecimal("400.0"), LocalDate.now(), userA, defaultCategory);
-        performDelete("/api/v1/transactions/" + transaction.getId(), userAPrincipal)
+        performDelete("/api/v1/transactions/" + transaction.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Transaction deleted successfully"));
         assertThat(transactionRepository.findById(transaction.getId())).isEmpty();
@@ -195,7 +195,7 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void deleteTransaction_NonExistentTransaction_Returns404() throws Exception {
-        performDelete("/api/v1/transactions/" + UUID.randomUUID(), userAPrincipal)
+        performDelete("/api/v1/transactions/" + UUID.randomUUID(), userAPrincipal, null)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("NOT_FOUND"));
 
@@ -204,7 +204,7 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
     @Test
     void deleteTransaction_OtherUsersTransaction_Returns403() throws Exception {
         Transaction userBTransaction = seedTransaction(new BigDecimal("1.0"), LocalDate.now(), userB, defaultCategory);
-        performDelete("/api/v1/transactions/" + userBTransaction.getId(), userAPrincipal)
+        performDelete("/api/v1/transactions/" + userBTransaction.getId(), userAPrincipal, null)
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("FORBIDDEN"));
 

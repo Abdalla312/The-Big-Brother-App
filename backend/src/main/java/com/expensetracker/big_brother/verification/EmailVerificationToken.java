@@ -8,7 +8,9 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "email_verification_token")
+@Table(name = "email_verification_token", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"user_id"})
+})
 @NoArgsConstructor
 public class EmailVerificationToken {
     @Id
@@ -25,12 +27,17 @@ public class EmailVerificationToken {
     private User user;
 
     @Getter
+    @Column(nullable = true)
+    private String newEmail;  // null for registration token, set = email-change token
+
+    @Getter
     @Column(name = "expires_at",nullable = false)
     private LocalDateTime expiresAt;
 
-    public EmailVerificationToken(String tokenHash, User user, LocalDateTime expiresAt) {
+    public EmailVerificationToken(String tokenHash, User user, String newEmail, LocalDateTime expiresAt) {
         this.tokenHash = tokenHash;
         this.user = user;
+        this.newEmail = newEmail;
         this.expiresAt = expiresAt;
     }
 

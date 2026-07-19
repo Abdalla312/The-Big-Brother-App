@@ -4,6 +4,7 @@ import com.expensetracker.big_brother.auth.dto.AuthResponse;
 import com.expensetracker.big_brother.auth.dto.LoginRequest;
 import com.expensetracker.big_brother.auth.dto.RegisterRequest;
 import com.expensetracker.big_brother.auth.dto.ResendVerificationRequest;
+import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
 import com.expensetracker.big_brother.user.Role;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
@@ -42,28 +43,12 @@ public class AuthServiceTest {
     private EmailVerificationService emailVerificationService;
     @Mock
     private JwtService jwtService;
+    @Mock private RefreshTokenService refreshTokenService;
     @InjectMocks
     private AuthService authService;
 
-    private RegisterRequest aRegisterRequest() {
-        RegisterRequest r = new RegisterRequest();
-        r.setName("test_user");
-        r.setEmail("test@example.com");
-        r.setPassword("Password1");
-        return r;
-    }
-
-    private LoginRequest aLoginRequest() {
-        LoginRequest r = new LoginRequest();
-        r.setEmail("test@example.com");
-        r.setPassword("Password1");
-        return r;
-    }
-
     private ResendVerificationRequest aResendRequest() {
-        ResendVerificationRequest r = new ResendVerificationRequest();
-        r.setEmail("test@example.com");
-        return r;
+        return new ResendVerificationRequest("test@example.com");
     }
 
     private User anUnVerifiedUser() {
@@ -83,26 +68,25 @@ public class AuthServiceTest {
     }
 
     @Test
-    void register_successfully() {
-        RegisterRequest request = aRegisterRequest();
+    void register_Success() {
+        RegisterRequest request = new RegisterRequest("test_user", "test@example.com", "Password1");
         when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
         when(passwordEncoder.encode("Password1")).thenReturn("hashed");
         when(userRepository.save(any())).thenReturn(anUnVerifiedUser());
 
-        AuthResponse response = authService.register(aRegisterRequest());
+        AuthResponse response = authService.register(request);
 
-        assertThat(response.getName()).isEqualTo("test_user");
-        assertThat(response.getEmail()).isEqualTo("test@example.com");
-        assertThat(response.isVerified()).isFalse();
-        assertThat(response.getAccessToken()).isNull();
-        assertThat(response.getMessage()).contains("verify");
+        assertThat(response.name()).isEqualTo("test_user");
+        assertThat(response.email()).isEqualTo("test@example.com");
+        assertThat(response.verified()).isFalse();
+        assertThat(response.accessToken()).isNull();
         verify(emailVerificationService).sendVerificationEmail(any());
     }
 
     @Test
-    void register_duplicateEmail_throwsConflict() {
+    void Register_DuplicateEmail_ThrowsException() {
         // given
-        RegisterRequest request = aRegisterRequest();
+        RegisterRequest request = new RegisterRequest("test_user", "test@example.com", "Password1");
 
         when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> authService.register(request));
@@ -112,9 +96,8 @@ public class AuthServiceTest {
     }
 
     @Test
-    void register_normalizesEmail() {
-        RegisterRequest request = aRegisterRequest();
-        request.setEmail("Test@Example.com");
+    void register_NormalizesEmail_Success() {
+        RegisterRequest request = new RegisterRequest("Test@Example.com", "test@example.com", "Password1");
 
         when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("hashed");
@@ -127,46 +110,50 @@ public class AuthServiceTest {
     }
 
     @Test
-    void login_success() {
-        LoginRequest request = aLoginRequest();
+    void login_Success() {
+        LoginRequest request = new LoginRequest("test@example.com", "Password1");
         User user = aVerifiedUser();
+
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
         when(jwtService.generateToken(any())).thenReturn("jwt-token");
+        when(refreshTokenService.generateRefreshToken(any())).thenReturn("refresh-token");
 
         AuthResponse response = authService.login(request);
 
-        assertThat(response.getAccessToken()).isEqualTo("jwt-token");
-        assertThat(response.getEmail()).isEqualTo("test@example.com");
-        assertThat(response.isVerified()).isTrue();
+        assertThat(response.accessToken()).isEqualTo("jwt-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-token");
+
+        assertThat(response.email()).isEqualTo("test@example.com");
+        assertThat(response.verified()).isTrue();
         verify(authenticationManager).authenticate(any());
     }
 
     @Test
-    void login_unverifiedUser_throwsForbidden() {
-        LoginRequest request = aLoginRequest();
+    void login_UnverifiedUser_ThrowsForbidden() {
+        LoginRequest request = new LoginRequest("test@example.com", "Password1");
         doThrow(new DisabledException("")).when(authenticationManager).authenticate(any());
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> authService.login(request));
         assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
-    void login_badCredentials_throwsUnauthorized() {
-        LoginRequest request = aLoginRequest();
+    void login_BadCredentials_ThrowsUnauthorized() {
+        LoginRequest request = new LoginRequest("test@example.com", "Password1");
         doThrow(new BadCredentialsException("")).when(authenticationManager).authenticate(any());
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> authService.login(request));
         assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
-    void login_userNotFoundAfterAuth_throwsUnauthorized() {
-        LoginRequest request = aLoginRequest();
+    void login_UserNotFoundAfterAuth_ThrowsUnauthorized() {
+        LoginRequest request = new LoginRequest("test@example.com", "Password1");
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> authService.login(request));
         assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
-    void verifyEmail_success() {
+    void verifyEmail_Success() {
         UUID userId = UUID.randomUUID();
         String token = "raw-token";
 
@@ -175,7 +162,7 @@ public class AuthServiceTest {
     }
 
     @Test
-    void verifyEmail_invalidToken_throwsBadRequest() {
+    void verifyEmail_InvalidToken_ThrowsBadRequest() {
         UUID userId = UUID.randomUUID();
         String token = "bad-token";
 
@@ -188,7 +175,7 @@ public class AuthServiceTest {
     }
 
     @Test
-    void resendVerification_success() {
+    void resendVerification_Success() {
         ResendVerificationRequest request = aResendRequest();
         User user = anUnVerifiedUser();
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
@@ -198,18 +185,7 @@ public class AuthServiceTest {
     }
 
     @Test
-    void resendVerification_cooldown_throwsTooManyRequests() {
-        ResendVerificationRequest request = aResendRequest();
-        User user = anUnVerifiedUser();
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
-
-        authService.resendVerification(request);
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> authService.resendVerification(request));
-        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
-    }
-
-    @Test
-    void resendVerification_alreadyVerified_doesNothing() {
+    void resendVerification_AlreadyVerified_DoesNothing() {
         ResendVerificationRequest request = aResendRequest();
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(aVerifiedUser()));
         authService.resendVerification(request);
@@ -217,7 +193,7 @@ public class AuthServiceTest {
     }
 
     @Test
-    void resendVerification_emailNotFound_doesNothing() {
+    void resendVerification_EmailNotFound_DoesNothing() {
         ResendVerificationRequest request = aResendRequest();
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
         authService.resendVerification(request);

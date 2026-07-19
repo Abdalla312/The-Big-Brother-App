@@ -137,7 +137,7 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException exception,
             WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
-        String path = request.getDescription(false).replace("uri", "");
+        String path = request.getDescription(false).replace("uri=", "");
         String message= "month".equals(exception.getName())
                 ? "Invalid date format. Use yyyy-MM"
                 : "Invalid value for parameter '" + exception.getName() + "': " + exception.getValue();
@@ -153,7 +153,7 @@ public class GlobalExceptionHandler {
             ConstraintViolationException exception,
             WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
-        String path = request.getDescription(false).replace("uri", "");
+        String path = request.getDescription(false).replace("uri=", "");
         log.warn("Constrain violation: {} errors", exception.getConstraintViolations().size());
         List<ErrorResponse.FieldError> fieldErrors = exception.getConstraintViolations()
                 .stream()
@@ -178,7 +178,7 @@ public class GlobalExceptionHandler {
             HttpRequestMethodNotSupportedException exception,
             WebRequest request) {
         HttpStatus status = HttpStatus.METHOD_NOT_ALLOWED;
-        String path = request.getDescription(false).replace("uri", "");
+        String path = request.getDescription(false).replace("uri=", "");
         log.warn("Method not allowed: {}", exception.getMessage());
         ErrorResponse errorResponse = ErrorResponse.of(
                 status.value(),
@@ -194,7 +194,7 @@ public class GlobalExceptionHandler {
             HttpMediaTypeNotSupportedException exception,
             WebRequest request) {
         HttpStatus status = HttpStatus.UNSUPPORTED_MEDIA_TYPE;
-        String path = request.getDescription(false).replace("uri", "");
+        String path = request.getDescription(false).replace("uri=", "");
         log.warn("Unsupported media type: {}", exception.getMessage());
         ErrorResponse errorResponse = ErrorResponse.of(
                 status.value(),
@@ -210,7 +210,7 @@ public class GlobalExceptionHandler {
             DataIntegrityViolationException exception,
             WebRequest request) {
         HttpStatus status = HttpStatus.CONFLICT;
-        String path = request.getDescription(false).replace("uri", "");
+        String path = request.getDescription(false).replace("uri=", "");
         log.error("Data integrity violation", exception);
         ErrorResponse errorResponse = ErrorResponse.of(
                 status.value(),
@@ -226,7 +226,7 @@ public class GlobalExceptionHandler {
             IllegalArgumentException exception,
             WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
-        String path = request.getDescription(false).replace("uri", "");
+        String path = request.getDescription(false).replace("uri=", "");
         log.warn("Illegal argument: {}", exception.getMessage());
         ErrorResponse errorResponse = ErrorResponse.of(
                 status.value(),
@@ -274,7 +274,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex,
             WebRequest request) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
-        String path = request.getDescription(false).replace("uri", "");
+        String path = request.getDescription(false).replace("uri=", "");
 
         List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
@@ -303,12 +303,24 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         log.warn("Invalid format: {}", exception.getMessage());
         String path = request.getDescription(false).replace("uri=", "");
+        Throwable cause = exception.getCause();
+        String message;
+        if (cause != null && cause.getMessage() != null
+             && cause.getMessage().contains("date-time")){
+            message = "Invalid date format. Use yyyy-MM";
+        } else if (exception.getMessage() != null
+                && exception.getMessage().contains("Required request body is missing")){
+            message = "Required request body is missing";
+        } else {
+            message = exception.getMessage() != null
+                    ? exception.getMessage()
+                    : "Request body is not readable";
+        }
         ErrorResponse errorResponse = ErrorResponse.of(
                 status.value(),
                 "BAD_REQUEST",
-                "Invalid date format. Use yyyy-MM",
-                path
-        );
+                message,
+                path);
         return new ResponseEntity<>(errorResponse, status);
     }
 

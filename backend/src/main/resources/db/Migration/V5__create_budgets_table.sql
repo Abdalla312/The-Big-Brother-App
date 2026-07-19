@@ -1,6 +1,6 @@
 CREATE TABLE budgets (
     id UUID PRIMARY KEY,
-    "month" VARCHAR NOT NULL, -- Format YYYY-MM
+    "month" VARCHAR(7) NOT NULL,
     limit_amount DECIMAL(19, 4) NOT NULL,
     user_id UUID NOT NULL,
     category_id UUID NOT NULL,

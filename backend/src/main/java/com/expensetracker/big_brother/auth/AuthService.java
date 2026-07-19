@@ -4,12 +4,15 @@ import com.expensetracker.big_brother.auth.dto.AuthResponse;
 import com.expensetracker.big_brother.auth.dto.LoginRequest;
 import com.expensetracker.big_brother.auth.dto.RegisterRequest;
 import com.expensetracker.big_brother.auth.dto.ResendVerificationRequest;
+import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.user.Role;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
 import com.expensetracker.big_brother.verification.EmailVerificationService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DisabledException;
@@ -19,54 +22,31 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class AuthService {
-    private static final long COOLDOWN_SECONDS = 300;
-    // dependencies
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationService emailVerificationService;
     private final AuthenticationManager authManager;
     private final JwtService jwtService;
-    private final Map<String, Instant> lastSeen = new ConcurrentHashMap<>();
-
-    AuthService(JwtService jwtService,
-                UserRepository userRepository,
-                PasswordEncoder passwordEncoder,
-                EmailVerificationService emailVerificationService,
-                AuthenticationManager authManager) {
-        this.jwtService = jwtService;
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.emailVerificationService = emailVerificationService;
-        this.authManager = authManager;
-    }
-
-    private void checkCooldown(String email) {
-        Instant last = lastSeen.get(email);
-        if (last != null && Duration.between(last, Instant.now()).getSeconds() < COOLDOWN_SECONDS) {
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                    "Please wait before requesting another email");
-        }
-    }
+    private final RefreshTokenService refreshTokenService;
 
     // Register
     public AuthResponse register(@Valid RegisterRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase();
 
         if (userRepository.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
         User user = new User();
-        user.setName(request.getName().trim());
+        user.setName(request.name().trim());
         user.setEmail(email);
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setRole(Role.USER);
         user.setUserVerified(false);
 
@@ -74,21 +54,20 @@ public class AuthService {
 
         emailVerificationService.sendVerificationEmail(savedUser);
 
-        return AuthResponse
-                .builder()
-                .name(savedUser.getName())
-                .email(savedUser.getEmail())
-                .verified(savedUser.isUserVerified())
-                .message("Registration successful. Please verify your email before logging in.")
-                .build();
+        log.info("New user registered: {}", email);
+        return new AuthResponse(
+                null, null,
+                savedUser.getName(),
+                savedUser.getEmail(),
+                savedUser.isUserVerified());
     }
 
     // Login
     public AuthResponse login(LoginRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase();
 
         try {
-            authManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.getPassword()));
+            authManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.password()));
         } catch (DisabledException exception) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email before logging in");
         } catch (AuthenticationException exception) {
@@ -96,34 +75,34 @@ public class AuthService {
         }
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
-        String token = jwtService.generateToken(new CustomUserDetails(user));
-        return AuthResponse.builder()
-                .accessToken(token)
-                .name(user.getName())
-                .email(user.getEmail())
-                .verified(user.isUserVerified())
-                .message("Login Successful.")
-                .build();
+
+        String accessToken = jwtService.generateToken(new CustomUserDetails(user));
+        String refreshToken = refreshTokenService.generateRefreshToken(user);
+        log.info("User logged in: {}", email);
+        return new AuthResponse(
+                accessToken,
+                refreshToken,
+                user.getName(),
+                user.getEmail(),
+                user.isUserVerified());
     }
 
     // verify email
     public void verifyEmail(UUID userId, String token) {
         try {
             emailVerificationService.verifyEmail(token, userId);
+            log.info("Email verified for user: {}", userId);
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
         }
     }
 
     public void resendVerification(ResendVerificationRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
-        checkCooldown(email);
+        String email = request.email().trim().toLowerCase();
         userRepository.findByEmail(email)
                 .filter(u -> !u.isUserVerified())
-                .ifPresent(u -> {
-                    emailVerificationService.sendVerificationEmail(u);
-                    lastSeen.put(email, Instant.now());
-                });
+                .ifPresent(emailVerificationService::sendVerificationEmail);
+        log.info("Verification email resent to: {}", email);
     }
 }
 

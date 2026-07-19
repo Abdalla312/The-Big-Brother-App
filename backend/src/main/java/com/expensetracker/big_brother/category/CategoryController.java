@@ -4,15 +4,17 @@ import com.expensetracker.big_brother.category.dto.CategoryResponse;
 import com.expensetracker.big_brother.category.dto.CreateCategoryRequest;
 import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
 import com.expensetracker.big_brother.common.ApiResponse;
+import com.expensetracker.big_brother.common.PageResponse;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -23,9 +25,11 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CategoryResponse>>> getAll(
-            @AuthenticationPrincipal CustomUserDetails user) {
-        List<CategoryResponse> categories = categoryService.getAllCategories(user.getUserId());
+    public ResponseEntity<ApiResponse<PageResponse<CategoryResponse>>> getAll(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PageableDefault(size = 50, sort = "name") Pageable pageable,
+            @RequestParam(defaultValue = "user") String type) {
+        PageResponse<CategoryResponse> categories = categoryService.getAllCategories(user.getUserId(), type, pageable);
         return ResponseEntity.ok(ApiResponse.ok(categories, "Categories retrieved"));
     }
 

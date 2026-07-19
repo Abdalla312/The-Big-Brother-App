@@ -3,6 +3,7 @@ package com.expensetracker.big_brother.category;
 import com.expensetracker.big_brother.category.dto.CategoryResponse;
 import com.expensetracker.big_brother.category.dto.CreateCategoryRequest;
 import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
+import com.expensetracker.big_brother.common.PageResponse;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.CategoryInUseException;
@@ -16,6 +17,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -92,11 +96,46 @@ public class CategoryServiceTest {
     void getAllCategories_success() {
         Category cat1 = aCategory();
         Category cat2 = aSystemCategory();
-        when(categoryRepository.findAllByUserIdOrUserIsNull(userId)).thenReturn(List.of(cat1, cat2));
-        when(categoryMapper.toResponseList(List.of(cat1, cat2))).thenReturn(List.of(aCategoryResponse(cat1), aCategoryResponse(cat2)));
-        List<CategoryResponse> result = categoryService.getAllCategories(userId);
-        assertThat(result).hasSize(2);
-        verify(categoryRepository).findAllByUserIdOrUserIsNull(userId);
+        Page<Category> page = new PageImpl<>(List.of(cat1, cat2));
+        when(categoryRepository.findAllByUserIdOrUserIsNull(eq(userId), any(Pageable.class))).thenReturn(page);
+        when(categoryMapper.toResponse(cat1)).thenReturn(aCategoryResponse(cat1));
+        when(categoryMapper.toResponse(cat2)).thenReturn(aCategoryResponse(cat2));
+
+        PageResponse<CategoryResponse> result = categoryService.getAllCategories(userId, "all", Pageable.ofSize(20));
+
+        assertThat(result.content()).hasSize(2);
+        assertThat(result.totalElements()).isEqualTo(2);
+        verify(categoryRepository).findAllByUserIdOrUserIsNull(eq(userId) , any(Pageable.class));
+    }
+
+    @Test
+    void getAllUserCategories_success() {
+        Category cat1 = aCategory();
+        Category cat2 = aSystemCategory();
+        Page<Category> page = new PageImpl<>(List.of(cat1));
+        when(categoryRepository.findAllByUserId(eq(userId), any(Pageable.class))).thenReturn(page);
+        when(categoryMapper.toResponse(cat1)).thenReturn(aCategoryResponse(cat1));
+
+        PageResponse<CategoryResponse> result = categoryService.getAllCategories(userId, "user", Pageable.ofSize(20));
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        verify(categoryRepository).findAllByUserId(eq(userId) , any(Pageable.class));
+    }
+
+    @Test
+    void getAllDefaultCategories_success() {
+        Category cat1 = aCategory();
+        Category cat2 = aSystemCategory();
+        Page<Category> page = new PageImpl<>(List.of(cat2));
+        when(categoryRepository.findAllByUserIdIsNull(any(Pageable.class))).thenReturn(page);
+        when(categoryMapper.toResponse(cat2)).thenReturn(aCategoryResponse(cat2));
+
+        PageResponse<CategoryResponse> result = categoryService.getAllCategories(userId, "default", Pageable.ofSize(20));
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        verify(categoryRepository).findAllByUserIdIsNull(any(Pageable.class));
     }
 
     // --- createCategory -------
