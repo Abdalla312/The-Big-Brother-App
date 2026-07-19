@@ -3,9 +3,9 @@ package com.expensetracker.big_brother.verification;
 import com.expensetracker.big_brother.mail.EmailService;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

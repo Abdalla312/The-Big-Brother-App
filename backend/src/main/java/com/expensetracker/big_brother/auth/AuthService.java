@@ -12,6 +12,7 @@ import com.expensetracker.big_brother.user.UserRepository;
 import com.expensetracker.big_brother.verification.EmailVerificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DisabledException;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -52,6 +54,7 @@ public class AuthService {
 
         emailVerificationService.sendVerificationEmail(savedUser);
 
+        log.info("New user registered: {}", email);
         return new AuthResponse(
                 null, null,
                 savedUser.getName(),
@@ -75,7 +78,7 @@ public class AuthService {
 
         String accessToken = jwtService.generateToken(new CustomUserDetails(user));
         String refreshToken = refreshTokenService.generateRefreshToken(user);
-
+        log.info("User logged in: {}", email);
         return new AuthResponse(
                 accessToken,
                 refreshToken,
@@ -88,6 +91,7 @@ public class AuthService {
     public void verifyEmail(UUID userId, String token) {
         try {
             emailVerificationService.verifyEmail(token, userId);
+            log.info("Email verified for user: {}", userId);
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
         }
@@ -98,6 +102,7 @@ public class AuthService {
         userRepository.findByEmail(email)
                 .filter(u -> !u.isUserVerified())
                 .ifPresent(emailVerificationService::sendVerificationEmail);
+        log.info("Verification email resent to: {}", email);
     }
 }
 

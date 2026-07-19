@@ -9,6 +9,7 @@ import com.expensetracker.big_brother.user.dto.UpdateProfileRequest;
 import com.expensetracker.big_brother.user.dto.UserResponse;
 import com.expensetracker.big_brother.verification.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
@@ -42,6 +44,7 @@ public class UserService {
             emailVerificationService.sendEmailChangeVerification(currentUser, request.email());
         }
         if (request.name() != null) currentUser.setName(request.name());
+        log.info("Profile updated: {}", userId);
         return userMapper.toResponse(userRepository.save(currentUser));
     }
 
@@ -56,6 +59,7 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
         refreshTokenService.revokeAllUserTokens(userId);
+        log.info("Password changed for user: {}", userId);
     }
 
     @Transactional
@@ -67,7 +71,7 @@ public class UserService {
         }
         refreshTokenService.revokeAllUserTokens(userId);
         userRepository.delete(user);
-
+        log.info("Account deleted: {}", userId);
     }
 
 }
