@@ -14,9 +14,13 @@ import java.util.UUID;
 public class CustomUserDetails implements UserDetails {
     private final User user;
 
-    public UUID getUserId() {return user.getId();}
+    public UUID getUserId() {
+        return user.getId();
+    }
 
-    public String getEmail() { return user.getEmail();}
+    public String getEmail() {
+        return user.getEmail();
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

@@ -77,6 +77,7 @@ public class TransactionService {
         }
 
         Transaction newTransaction = transactionMapper.toEntity(request);
+        newTransaction.setPaymentMethod(normalizePaymentMethod(request.paymentMethod()));
         newTransaction.setCategory(category);
         User user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", currentUserId));
@@ -96,7 +97,7 @@ public class TransactionService {
         if (request.amount() != null) transaction.setAmount(request.amount());
         if (request.transactionDate() != null) transaction.setTransactionDate(request.transactionDate());
         if (request.note() != null) transaction.setNote(request.note());
-        if (request.paymentMethod() != null) transaction.setPaymentMethod(request.paymentMethod());
+        if (request.paymentMethod() != null) transaction.setPaymentMethod(normalizePaymentMethod(request.paymentMethod()));
         // category update with ownership check
         if (request.categoryId() != null && !transaction.getCategory().getId().equals(request.categoryId())) {
             Category newCategory = categoryRepository.findById(request.categoryId())
@@ -116,5 +117,17 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", transactionId));
         ownershipValidator.validateOwnership(transaction.getUser().getId(), currentUserId);
         transactionRepository.delete(transaction);
+    }
+
+    private String normalizePaymentMethod(String value) {
+        if (value == null || value.isBlank()) return null;
+        String trimmed = value.trim();
+        StringBuilder result = new StringBuilder();
+        for (String word : trimmed.split("\\s+")) {
+            if (!result.isEmpty()) result.append(" ");
+            result.append(Character.toUpperCase(word.charAt(0)))
+                    .append(word.substring(1).toLowerCase());
+        }
+        return result.toString();
     }
 }
