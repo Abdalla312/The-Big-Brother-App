@@ -1,7 +1,6 @@
 package com.expensetracker.big_brother.security;
 
 import com.expensetracker.big_brother.auth.JwtService;
-import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -54,9 +53,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-        } catch(Exception exception){
+        } catch (Exception exception) {
             SecurityContextHolder.clearContext();
-            throw new AuthenticationException("Invalid or expired JWT token"){};
+            throw new AuthenticationException("Invalid or expired JWT token") {
+            };
         }
         filterChain.doFilter(request, response);
     }
