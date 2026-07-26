@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Big Brother - Expense Tracker</title>
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/lucide.min.js"></script>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased">
+  <div id="app" class="flex h-screen overflow-hidden">
+    <div id="sidebar-container"></div>
+    <div class="flex flex-1 flex-col overflow-hidden">
+      <div id="header-container"></div>
+      <main id="app-content" class="flex-1 overflow-y-auto p-6"></main>
+    </div>
+  </div>
+
+  <div id="auth-container" class="hidden min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div id="auth-content" class="w-full max-w-md"></div>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
