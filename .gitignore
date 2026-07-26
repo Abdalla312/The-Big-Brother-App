@@ -45,7 +45,6 @@ build/
 /.vscode/
 # Environment files
 .env
-.env.*
 *.env
 AGENTS.md
 **/plans/
