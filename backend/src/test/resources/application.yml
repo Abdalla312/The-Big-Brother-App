@@ -4,12 +4,6 @@ spring:
     username: sa
     password:
     driver-class-name: org.h2.Driver
-<<<<<<< Updated upstream
-  flyway:
-    enabled: true
-=======
-
->>>>>>> Stashed changes
   jpa:
     hibernate:
       ddl-auto: create-drop
