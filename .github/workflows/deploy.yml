@@ -56,11 +56,19 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+            --query 'taskDefinition.{containerDefinitions:containerDefinitions,family:family,executionRoleArn:executionRoleArn,taskRoleArn:taskRoleArn,networkMode:networkMode}' \
+            --output json > task-definition.json
+          jq '. + {"requiresCompatibilities": ["FARGATE"], "cpu": "512", "memory": "1024"}' task-definition.json > temp.json && mv temp.json task-definition.json
+
       - name: Render Amazon ECS task definition
         id: render-task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          task-definition: task-definition.json
           container-name: ${{ env.ECS_CONTAINER_NAME }}
           image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
