@@ -6,6 +6,9 @@ spring:
     driver-class-name: org.h2.Driver
   flyway:
     enabled: true
+    locations: classpath:db/migration
+    default-schema: PUBLIC
+    create-schemas: false
   jpa:
     hibernate:
       ddl-auto: none
@@ -13,6 +16,7 @@ spring:
       hibernate:
         globally-quoted-identifiers: true
         auto_quote_keyword: true
+        default_schema: PUBLIC
   mail:
     host: localhost
     port: 1025
