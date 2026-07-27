@@ -55,8 +55,8 @@ app:
     support-email: "expense.tracker.big.brother@gmail.com"
   rate-limit:
     enabled: true
-    capacity: 5
-    refill-rate: 1
+    capacity: 20
+    refill-rate: 5
     refill-period-seconds: 60
   jwt:
     secret: ${JWT_SECRET}

@@ -1,10 +1,12 @@
 import { api } from '../api.js';
-import { setTokens, setUser } from '../auth.js';
+import { setTokens, setUser, clearTokens } from '../auth.js';
 import { navigate } from '../router.js';
 import { showToast } from '../components/toast.js';
 
 export function renderLogin() {
   const container = document.getElementById('auth-content');
+  const registered = new URLSearchParams(window.location.hash.slice(1).split('?')[1] || '').get('registered');
+  
   container.innerHTML = `
     <div class="card">
       <div class="text-center mb-8">
@@ -14,6 +16,11 @@ export function renderLogin() {
         <h1 class="text-2xl font-bold text-gray-900">Welcome back</h1>
         <p class="text-sm text-gray-500 mt-1">Sign in to your account</p>
       </div>
+      ${registered ? `
+        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+          Account created! Please check your email to verify, then sign in.
+        </div>
+      ` : ''}
       <form id="login-form" class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -47,6 +54,9 @@ async function handleLogin(e) {
   const errorDiv = document.getElementById('login-error');
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
+
+  // Clear any stale tokens from previous sessions
+  clearTokens();
 
   btn.disabled = true;
   btn.innerHTML = '<svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Signing in...';

@@ -56,7 +56,7 @@ public class EmailVerificationService {
                 null,
                 LocalDateTime.now().plusHours(verificationExpiryHours));
         verificationRepository.save(token);
-        String verificationLink = frontendUrl + "/verify?userId=" + user.getId() + "&token=" + rawToken;
+        String verificationLink = frontendUrl + "/#/verify?userId=" + user.getId() + "&token=" + rawToken;
         String htmlBody = emailTemplateService.renderVerificationEmail(
                 user.getName(),
                 verificationLink,
@@ -79,7 +79,7 @@ public class EmailVerificationService {
                 tokenHash, currentUser, newEmail, LocalDateTime.now().plusHours(verificationExpiryHours));
         verificationRepository.save(token);
 
-        String verificationLink = frontendUrl + "/verify?userId=" + currentUser.getId() + "&token=" + rawToken;
+        String verificationLink = frontendUrl + "/#/verify?userId=" + currentUser.getId() + "&token=" + rawToken;
 
         String htmlBody = emailTemplateService.renderEmailChangeVerification(
                 currentUser.getName(),
