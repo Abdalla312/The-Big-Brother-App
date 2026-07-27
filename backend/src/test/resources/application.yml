@@ -4,11 +4,15 @@ spring:
     username: sa
     password:
     driver-class-name: org.h2.Driver
+<<<<<<< Updated upstream
   flyway:
     enabled: true
+=======
+
+>>>>>>> Stashed changes
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create-drop
     properties:
       hibernate:
         globally-quoted-identifiers: true

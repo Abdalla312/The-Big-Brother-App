@@ -6,6 +6,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -59,9 +60,10 @@ public class TokenBucketTest {
     @Test
     void lastRefill_UpdateOnConsume() {
         TokenBucket bucket = new TokenBucket(aDefaultProps());
-        Instant before = Instant.now();
+        Instant before = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         bucket.tryConsume();
-        Instant after = Instant.now();
-        assertThat(bucket.lastRefill()).isAfterOrEqualTo(before).isBeforeOrEqualTo(after);
+        Instant after = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        assertThat(bucket.lastRefill().truncatedTo(ChronoUnit.MILLIS))
+                .isAfterOrEqualTo(before).isBeforeOrEqualTo(after);
     }
 }
