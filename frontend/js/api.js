@@ -1,7 +1,8 @@
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './auth.js';
 import { showToast } from './components/toast.js';
+import { API_URL } from './config.js';
 
-const BASE = 'http://localhost:8080/api/v1';
+const BASE = `${API_URL}/api/v1`;
 const MAX_RETRIES = 2;
 const INITIAL_RETRY_DELAY = 1000;
 

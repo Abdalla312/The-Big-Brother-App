@@ -26,6 +26,7 @@ spring:
 
 app:
   backend-url: http://localhost:8080
+  frontend-url: http://localhost:3000
   rate-limit:
     enabled: false
     capacity: 5
