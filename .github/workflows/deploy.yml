@@ -6,7 +6,7 @@ on:
 
 env:
   AWS_REGION: eu-central-1
-  ECR_REPOSITORY: big-brother-backend
+  ECR_REPOSITORY: big-brother
   ECS_CLUSTER: big-brother-cluster
   ECS_SERVICE: big-brother-service
   ECS_TASK_DEFINITION: big-brother-task
