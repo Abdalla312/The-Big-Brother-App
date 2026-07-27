@@ -9,13 +9,19 @@ spring:
         format_sql: true
         highlight_sql: true
 
-logging:
-  level:
-    com.expensetracker: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.sql: DEBUG
-    org.hibernate.type.descriptor.sql: TRACE
+  logging:
+    level:
+      com.expensetracker: DEBUG
+      org.springframework.security: DEBUG
+      org.hibernate.sql: DEBUG
+      org.hibernate.type.descriptor.sql: TRACE
 
-server:
-  port: 8080
+  server:
+    port: 8080
+
+app:
+  rate-limit:
+    capacity: 30
+    refill-rate: 10
+    refill-period-seconds: 60
 
