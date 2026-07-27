@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { setTokens, setUser } from '../auth.js';
+import { setTokens, setUser, clearTokens } from '../auth.js';
 import { navigate } from '../router.js';
 import { showToast } from '../components/toast.js';
 
@@ -57,10 +57,10 @@ async function handleRegister(e) {
   try {
     const res = await api.post('/auth/register', { name, email, password });
     const d = res.data;
-    setTokens(d.accessToken, d.refreshToken);
-    setUser({ name: d.name, email: d.email, verified: d.verified });
+    // Clear any stale tokens from previous sessions
+    clearTokens();
     showToast('Account created! Please check your email to verify.', 'success');
-    navigate('#/dashboard');
+    navigate('#/login?registered=true');
   } catch (err) {
     errorDiv.textContent = err.message || 'Registration failed';
     errorDiv.classList.remove('hidden');

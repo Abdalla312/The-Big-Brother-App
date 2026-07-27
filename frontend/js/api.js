@@ -2,8 +2,10 @@ import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './auth.
 import { showToast } from './components/toast.js';
 
 const BASE = 'http://localhost:8080/api/v1';
+const MAX_RETRIES = 2;
+const INITIAL_RETRY_DELAY = 1000;
 
-async function request(method, url, body = null, isRetry = false) {
+async function request(method, url, body = null, retryCount = 0) {
   const headers = { 'Content-Type': 'application/json' };
   const token = getAccessToken();
   if (token) {
@@ -23,10 +25,27 @@ async function request(method, url, body = null, isRetry = false) {
     throw new Error('Network error');
   }
 
-  if (res.status === 401 && !isRetry && getRefreshToken()) {
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After');
+    const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+    
+    if (retryCount < MAX_RETRIES) {
+      showToast(`Too many requests. Retrying in ${Math.ceil(delay / 1000)}s...`, 'warning');
+      await new Promise(r => setTimeout(r, delay));
+      return request(method, url, body, retryCount + 1);
+    }
+    
+    const message = 'Too many attempts. Please wait a minute before trying again.';
+    showToast(message, 'error');
+    const err = new Error(message);
+    err.status = 429;
+    throw err;
+  }
+
+  if (res.status === 401 && retryCount === 0 && getRefreshToken()) {
     const refreshed = await tryRefresh();
     if (refreshed) {
-      return request(method, url, body, true);
+      return request(method, url, body, retryCount);
     }
     clearTokens();
     window.location.hash = '#/login';

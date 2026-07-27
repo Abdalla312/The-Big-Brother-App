@@ -1,6 +1,7 @@
 package com.expensetracker.big_brother.verification;
 
 import com.expensetracker.big_brother.mail.EmailService;
+import com.expensetracker.big_brother.mail.EmailTemplateService;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,18 +22,25 @@ public class EmailVerificationService {
     private final EmailVerificationRepository verificationRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final EmailTemplateService emailTemplateService;
     private final SecureRandom secureRandom = new SecureRandom();
     @Value("${app.backend-url}")
     private String backendUrl;
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+    @Value("${app.verification.expiry-hours:1}")
+    private int verificationExpiryHours;
 
     public EmailVerificationService(
             EmailVerificationRepository verificationRepository,
             UserRepository userRepository,
-            EmailService emailService
+            EmailService emailService,
+            EmailTemplateService emailTemplateService
     ) {
         this.verificationRepository = verificationRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
+        this.emailTemplateService = emailTemplateService;
     }
 
     @Transactional
@@ -46,17 +54,14 @@ public class EmailVerificationService {
                 tokenHash,
                 user,
                 null,
-                LocalDateTime.now().plusHours(1));
+                LocalDateTime.now().plusHours(verificationExpiryHours));
         verificationRepository.save(token);
-        String verificationLink = backendUrl + "/api/v1/auth/verify-email?userId=" + user.getId() + "&token=" + rawToken;
-        String htmlBody = buildEmailHtml(
+        String verificationLink = frontendUrl + "/#/verify?userId=" + user.getId() + "&token=" + rawToken;
+        String htmlBody = emailTemplateService.renderVerificationEmail(
                 user.getName(),
-                "Verify your email",
-                "Click the button below to verify your email address:",
                 verificationLink,
-                "Verify Email",
-                "If you didn't create this account, you can ignore this email.");
-        emailService.sendHtml(user.getEmail(),"Verify your email", htmlBody);
+                verificationExpiryHours);
+        emailService.sendHtml(user.getEmail(), "Verify your email", htmlBody);
     }
 
     @Transactional
@@ -71,22 +76,24 @@ public class EmailVerificationService {
         String rawToken = generateToken();
         String tokenHash = hashToken(rawToken, currentUser.getId());
         EmailVerificationToken token = new EmailVerificationToken(
-                tokenHash, currentUser, newEmail, LocalDateTime.now().plusHours(1));
+                tokenHash, currentUser, newEmail, LocalDateTime.now().plusHours(verificationExpiryHours));
         verificationRepository.save(token);
 
-        String verificationLink = backendUrl + "/api/v1/auth/verify-email?userId=" + currentUser.getId() + "&token=" + rawToken;
+        String verificationLink = frontendUrl + "/#/verify?userId=" + currentUser.getId() + "&token=" + rawToken;
 
-        String htmlBody = buildEmailHtml(
+        String htmlBody = emailTemplateService.renderEmailChangeVerification(
                 currentUser.getName(),
-                "Confirm your new email",
-                "Click the button below to confirm this is your new email address:",
+                newEmail,
                 verificationLink,
-                "Confirm Email",
-                "If you didn't request this change, please contact support immediately.");
+                verificationExpiryHours);
         emailService.sendHtml(newEmail, "Confirm your new email", htmlBody);
-        emailService.sendHtml(currentUser.getEmail(), "Email change requested",
-                "A request to change your account email to " + newEmail
-                        + " was made. If this wasn't you, please contact support immediately.");
+        
+        // Send notification to old email
+        String notificationHtml = emailTemplateService.renderEmailChangeNotification(
+                currentUser.getName(),
+                newEmail,
+                verificationExpiryHours);
+        emailService.sendHtml(currentUser.getEmail(), "Email change requested", notificationHtml);
     }
 
     @Transactional
@@ -130,25 +137,4 @@ public class EmailVerificationService {
         }
     }
 
-
-    private String buildEmailHtml(
-            String name, String title, String instruction,
-            String link, String buttonText, String footerNote) {
-        return """
-                <!DOCTYPE html>
-                         <html>
-                         <body style="font-family: Arial, sans-serif; padding: 20px;">
-                           <div style="max-width: 600px; margin: auto;">
-                             <h2>%s</h2>
-                             <p>Hi %s,</p>
-                             <p>%s</p>
-                             <a href="%s" style="display: inline-block; padding: 12px 24px; background: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">%s</a>
-                             <p style="margin-top: 20px; color: #666;">This link expires in 1 hour.</p>
-                             <hr style="margin-top: 30px;">
-                             <p style="color: #999; font-size: 12px;">%s</p>
-                           </div>
-                         </body>
-                         </html>
-                """.formatted(title, name, instruction, link, buttonText, footerNote);
-    }
 }

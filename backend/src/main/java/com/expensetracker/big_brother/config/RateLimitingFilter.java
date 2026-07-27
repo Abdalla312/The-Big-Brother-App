@@ -41,6 +41,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         if (!bucket.tryConsume()) {
             response.setStatus(429);
+            response.setHeader("Retry-After", "60");
             response.setContentType("application/json");
             ErrorResponse error = ErrorResponse.of(
                     429, "TOO_MANY_REQUESTS", "Rate limit exceeded. Try again later.", request.getRequestURI());

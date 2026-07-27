@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <title th:fragment="title">Big Brother</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+</head>
+<body style="margin:0; padding:0; background:#F9FAFB; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+  <!-- Preheader text (hidden in email client preview) -->
+  <div style="display:none; max-height:0; overflow:hidden; font-size:1px; line-height:1px; color:#F9FAFB;" th:fragment="preheader" th:text="${preheader}">Big Brother - Expense Tracker</div>
+  
+  <table role="presentation" style="width:100%; border-collapse:collapse; padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <!-- Main email container -->
+        <table role="presentation" style="width:100%; max-width:600px; background:#ffffff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05); overflow:hidden;">
+          <!-- Header -->
+          <tr>
+            <td th:replace="~{fragments/email-header :: }"></td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px 24px 16px;">
+              <div th:fragment="content"></div>
+            </td>
+          </tr>
+          
+          <!-- Divider before footer -->
+          <tr>
+            <td style="padding:0 24px;">
+              <hr style="border:none; border-top:1px solid #E5E7EB; margin:0;"/>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td th:replace="~{fragments/email-footer :: footer}"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
