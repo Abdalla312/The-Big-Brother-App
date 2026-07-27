@@ -11,7 +11,7 @@ spring:
     create-schemas: false
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create-drop
     properties:
       hibernate:
         globally-quoted-identifiers: true
