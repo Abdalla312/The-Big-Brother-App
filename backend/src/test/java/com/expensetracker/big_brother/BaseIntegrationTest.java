@@ -12,6 +12,7 @@ import com.expensetracker.big_brother.transaction.TransactionRepository;
 import com.expensetracker.big_brother.user.Role;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
+import com.expensetracker.big_brother.verification.EmailVerificationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -46,6 +47,8 @@ public abstract class BaseIntegrationTest {
     protected PasswordEncoder passwordEncoder;
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+    @Autowired
+    private EmailVerificationRepository emailVerificationRepository;
 
     // HTTP Request helper methods
     protected ResultActions performGet(String url, CustomUserDetails principal) throws Exception {
@@ -130,6 +133,7 @@ public abstract class BaseIntegrationTest {
         budgetRepository.deleteAll();
         transactionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
+        emailVerificationRepository.deleteAll();
         categoryRepository.deleteAll();
         userRepository.deleteAll();
     }

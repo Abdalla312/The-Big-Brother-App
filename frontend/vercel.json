@@ -1,5 +1,5 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "frontend",
+  "outputDirectory": ".",
   "framework": null
 }
