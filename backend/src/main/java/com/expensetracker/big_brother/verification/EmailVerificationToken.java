@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "email_verification_token", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"user_id"})
+        @UniqueConstraint(columnNames = {"user_id", "token_type"})
 })
 @NoArgsConstructor
 public class EmailVerificationToken {
@@ -31,14 +31,24 @@ public class EmailVerificationToken {
     private String newEmail;  // null for registration token, set = email-change token
 
     @Getter
+    @Enumerated(EnumType.STRING)
+    @Column(name = "token_type", nullable = false, length = 32)
+    private TokenType tokenType;
+
+    @Getter
     @Column(name = "expires_at",nullable = false)
     private LocalDateTime expiresAt;
 
-    public EmailVerificationToken(String tokenHash, User user, String newEmail, LocalDateTime expiresAt) {
+    public EmailVerificationToken(String tokenHash, User user, String newEmail, LocalDateTime expiresAt, TokenType tokenType) {
         this.tokenHash = tokenHash;
         this.user = user;
         this.newEmail = newEmail;
         this.expiresAt = expiresAt;
+        this.tokenType = tokenType;
+    }
+
+    public EmailVerificationToken(String tokenHash, User user, String newEmail, LocalDateTime expiresAt) {
+        this(tokenHash, user, newEmail, expiresAt, TokenType.EMAIL_VERIFICATION);
     }
 
     public boolean isExpired() {
