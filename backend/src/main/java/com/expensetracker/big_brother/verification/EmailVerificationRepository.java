@@ -9,12 +9,9 @@ import java.util.Optional;
 public interface EmailVerificationRepository extends JpaRepository<EmailVerificationToken, Long> {
     Optional<EmailVerificationToken> findByTokenHash(String tokenHash);
 
-    void deleteByUserAndNewEmailIsNotNull(User user);
-
-    Optional<EmailVerificationToken> findByUserAndNewEmailIsNotNullAndExpiresAtAfter(
-            User user, LocalDateTime now);
-
     void deleteByUser(User user);
 
     boolean existsByUserAndExpiresAtAfter(User user, LocalDateTime now);
+
+    void deleteByUserAndTokenType(User user, TokenType tokenType);
 }
