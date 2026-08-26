@@ -1,5 +1,6 @@
 package com.expensetracker.big_brother.transaction;
 
+import com.expensetracker.big_brother.transaction.dto.TransactionExportFilter;
 import com.expensetracker.big_brother.category.Category;
 import com.expensetracker.big_brother.category.CategoryRepository;
 import com.expensetracker.big_brother.common.PageResponse;
@@ -14,14 +15,22 @@ import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +45,7 @@ public class TransactionService {
     private final TransactionMapper transactionMapper;
     private final OwnershipValidator ownershipValidator;
     private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     // list all authed user's transactions
     @Transactional(readOnly = true)
@@ -75,6 +85,9 @@ public class TransactionService {
         if (category.getUser() != null && !category.getUser().getId().equals(currentUserId)) {
             throw new ResourceOwnershipException();
         }
+
+        if (!(category.getType().toString()).equals(request.type().toString()))
+            throw new IllegalArgumentException("Transaction type mismatch with category");
 
         Transaction newTransaction = transactionMapper.toEntity(request);
         newTransaction.setPaymentMethod(normalizePaymentMethod(request.paymentMethod()));
@@ -130,4 +143,96 @@ public class TransactionService {
         }
         return result.toString();
     }
+
+    @Transactional(readOnly = true)
+    public void exportTransactionsCsv(UUID userId, TransactionExportFilter filter, OutputStream out) throws IOException {
+
+        SqlQuery query = buildExportQuery(userId, filter);
+
+        Writer writer = new OutputStreamWriter(out, StandardCharsets.UTF_8);
+        writer.write('\uFEFF');
+        try (CSVPrinter csvPrinter = new CSVPrinter(writer,
+                CSVFormat.DEFAULT.builder().setHeader("Date", "Type", "Category", "Amount", "Payment Method", "Note").get())) {
+
+
+            jdbcTemplate.query(
+                    connection -> {
+                        PreparedStatement statement =
+                                connection.prepareStatement(
+                                        query.sql(),
+                                        ResultSet.TYPE_FORWARD_ONLY,
+                                        ResultSet.CONCUR_READ_ONLY);
+                        for (int i = 0; i < query.parameters.size(); i++) {
+                            statement.setObject(i + 1, query.parameters.get(i));
+                        }
+                        statement.setFetchSize(1000);
+                        return statement;
+                    },
+                    resultSet -> {
+                        try {
+                            csvPrinter.printRecord(
+                                    resultSet.getObject("transaction_date", LocalDate.class),
+                                    resultSet.getString("type"),
+                                    resultSet.getString("category_name"),
+                                    resultSet.getBigDecimal("amount"),
+                                    resultSet.getString("payment_method"),
+                                    resultSet.getString("note")
+                            );
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    }
+            );
+            csvPrinter.flush();
+        }
+    }
+
+    private SqlQuery buildExportQuery(UUID userId, TransactionExportFilter filter) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT
+                    t.transaction_date,
+                    t.type,
+                    c.name AS category_name,
+                    t.amount,
+                    t.payment_method,
+                    t.note
+                FROM transactions t
+                LEFT JOIN categories c
+                    ON c.id = t.category_id
+                WHERE t.user_id = ?
+                """);
+
+        List<Object> params = new ArrayList<>();
+
+        params.add(userId);
+
+        if (filter.from() != null) {
+            sql.append(" AND t.transaction_date >= ?");
+            params.add(filter.from());
+        }
+
+        if (filter.to() != null) {
+            sql.append(" AND t.transaction_date <= ?");
+            params.add(filter.to());
+        }
+
+        if (filter.type() != null) {
+            sql.append(" AND t.type = ?");
+            params.add(filter.type().name());
+        }
+
+        if (filter.categoryId() != null) {
+            sql.append(" AND t.category_id = ?");
+            params.add(filter.categoryId());
+        }
+
+        sql.append(" ORDER BY t.transaction_date DESC, t.id DESC");
+
+        return new SqlQuery(sql.toString(),params);
+    }
+
+    private record SqlQuery(
+            String sql,
+            List<Object> parameters
+    ) {}
 }
