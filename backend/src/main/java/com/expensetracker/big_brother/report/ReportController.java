@@ -6,10 +6,12 @@ import com.expensetracker.big_brother.report.dto.*;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,6 +25,7 @@ import static org.springframework.format.annotation.DateTimeFormat.ISO.DATE;
 @RestController
 @RequestMapping("/api/v1/reports")
 @RequiredArgsConstructor
+@Validated
 public class ReportController {
     private final ReportService reportService;
 
@@ -60,7 +63,7 @@ public class ReportController {
     @GetMapping("/budget-comparison")
     public ResponseEntity<ApiResponse<List<BudgetComparisonResponse>>> getBudgetComparison(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @RequestParam @NotBlank String month) {
+            @RequestParam @NotBlank @Pattern(regexp = "\\d{4}-\\d{2}", message = "Month must be in yyyy-MM format") String month) {
         List<BudgetComparisonResponse> responseList = reportService.getBudgetComparison(principal.getUserId(), month);
         return ResponseEntity.ok(ApiResponse.ok(responseList, "Budget comparison retrieved"));
     }
