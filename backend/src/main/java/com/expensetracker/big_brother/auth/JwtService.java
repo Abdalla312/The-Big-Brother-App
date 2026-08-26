@@ -1,16 +1,21 @@
 package com.expensetracker.big_brother.auth;
 
-import com.expensetracker.big_brother.security.CustomUserDetails;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
+import java.util.Date;
+import java.util.function.Function;
+
+import javax.crypto.SecretKey;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.function.Function;
+import com.expensetracker.big_brother.security.CustomUserDetails;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
@@ -62,15 +67,25 @@ public class JwtService {
     }
 
     public boolean isTokenExpired(String jwtToken) {
+        try {
         return extractExpiration(jwtToken).before(new Date());
+        } catch (ExpiredJwtException e) {
+            return true;
+        } catch (JwtException | IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     public boolean isTokenValid(String jwtToken, CustomUserDetails userDetails) {
-        String username = extractUserName(jwtToken);
-        Integer tokenVersion = extractClaims(jwtToken, c -> c.get("tokenVersion", Integer.class));
-        return username.equals(userDetails.getUsername())
-                && tokenVersion != null
-                && tokenVersion == userDetails.getTokenVersion()
-                && !isTokenExpired(jwtToken);
+        try {
+            String username = extractUserName(jwtToken);
+            Integer tokenVersion = extractClaims(jwtToken, c -> c.get("tokenVersion", Integer.class));
+            return username.equals(userDetails.getUsername())
+                    && tokenVersion != null
+                    && tokenVersion == userDetails.getTokenVersion()
+                    && !isTokenExpired(jwtToken);
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
 }

@@ -34,3 +34,11 @@ app:
     secret: MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=
     access-token-expiry-ms: 9000000
     refresh-token-expiry-days: 30
+  verification:
+    expiry-hours: 1
+  brand:
+      name: "Big Brother Test"
+      primary-color: "#1E40AF"
+      support-email: "test@example.com"
+  reset:
+      expiry-minutes: 30
