@@ -11,7 +11,8 @@ COPY src ./src
 
 RUN ./mvnw package -B -DskipTests \
     && echo "=== FLYWAY MIGRATIONS ===" \
-    && jar tf target/*.jar | grep 'BOOT-INF/classes/db/migration/'
+    && jar tf target/*.jar | grep 'BOOT-INF/classes/db/migration/' \
+    || (echo "ERROR: No Flyway migrations found in jar!" && exit 1)
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
