@@ -30,6 +30,8 @@ public class EmailVerificationService {
     private String frontendUrl;
     @Value("${app.verification.expiry-hours:1}")
     private int verificationExpiryHours;
+    @Value("${app.reset.expiry-minuets}")
+    private int resetExpiryMinutes;
 
     public EmailVerificationService(
             EmailVerificationRepository verificationRepository,
@@ -97,6 +99,29 @@ public class EmailVerificationService {
     }
 
     @Transactional
+    public void sendPasswordResetEmail(User user) {
+        verificationRepository.deleteByUserAndTokenType(user, TokenType.PASSWORD_RESET);
+        verificationRepository.flush();
+
+        String rawToken = generateToken();
+        String tokenHash = hashToken(rawToken, user.getId());
+        EmailVerificationToken token = new EmailVerificationToken(
+                tokenHash,
+                user,
+                null,
+                LocalDateTime.now().plusMinutes(resetExpiryMinutes),
+                TokenType.PASSWORD_RESET);
+        verificationRepository.save(token);
+
+        String resetLink = frontendUrl + "/#/reset-password?userId=" + user.getId() + "&token=" + rawToken;
+        String htmlBody = emailTemplateService.renderPasswordReset(
+                user.getName(),
+                resetLink,
+                resetExpiryMinutes);
+        emailService.sendHtml(user.getEmail(), "Reset your password", htmlBody);
+    }
+
+    @Transactional
     public void verifyEmail(String rawToken, UUID userId) {
         String tokenHash = hashToken(rawToken, userId);
 
@@ -118,6 +143,29 @@ public class EmailVerificationService {
         }
         userRepository.save(user);
         verificationRepository.delete(token);
+    }
+
+    @Transactional
+    public User verifyPasswordResetToken(String rawToken, UUID userId) {
+        String tokenHash = hashToken(rawToken, userId);
+
+        EmailVerificationToken token = verificationRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
+        if (!token.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Invalid reset token");
+        }
+        if (token.getTokenType() != TokenType.PASSWORD_RESET) {
+            throw new IllegalArgumentException("Invalid token type");
+        }
+        if (token.isExpired()) {
+            verificationRepository.delete(token);
+            throw new IllegalArgumentException("Reset token expired");
+        }
+
+        User user = token.getUser();
+        user.getTokenVersion();
+        verificationRepository.delete(token);
+        return user;
     }
 
     private String generateToken() {

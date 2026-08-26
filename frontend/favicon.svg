@@ -1,0 +1,80 @@
+<svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="-250 -250 500 500"
+        width="500"
+        height="500">
+
+  <defs>
+    <!-- Blue glow -->
+    <radialGradient id="outerGradient">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#2563eb" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#1e40af" stop-opacity="0.05"/>
+    </radialGradient>
+
+    <!-- Core -->
+    <radialGradient id="coreGradient">
+      <stop offset="0%" stop-color="#93c5fd"/>
+      <stop offset="40%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1e40af"/>
+    </radialGradient>
+
+    <!-- Glow -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer transparent sphere -->
+  <circle
+          r="150"
+          fill="url(#outerGradient)"
+          stroke="#2563eb"
+          stroke-width="2"
+          opacity="0.35"/>
+
+  <!-- Horizontal ring -->
+  <ellipse
+          rx="180"
+          ry="22"
+          fill="none"
+          stroke="#3b82f6"
+          stroke-width="5"
+          opacity="0.45"/>
+
+  <!-- Vertical ring -->
+  <ellipse
+          rx="22"
+          ry="180"
+          fill="none"
+          stroke="#3b82f6"
+          stroke-width="5"
+          opacity="0.45"/>
+
+  <!-- Core glow -->
+  <circle
+          r="85"
+          fill="#2563eb"
+          opacity="0.35"
+          filter="url(#glow)"/>
+
+  <!-- Core sphere -->
+  <circle
+          r="80"
+          fill="url(#coreGradient)"
+          filter="url(#glow)"/>
+
+  <!-- Highlight -->
+  <ellipse
+          cx="-35"
+          cy="-40"
+          rx="30"
+          ry="18"
+          fill="white"
+          opacity="0.22"/>
+
+</svg>

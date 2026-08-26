@@ -1,9 +1,6 @@
 package com.expensetracker.big_brother.auth;
 
-import com.expensetracker.big_brother.auth.dto.AuthResponse;
-import com.expensetracker.big_brother.auth.dto.LoginRequest;
-import com.expensetracker.big_brother.auth.dto.RegisterRequest;
-import com.expensetracker.big_brother.auth.dto.ResendVerificationRequest;
+import com.expensetracker.big_brother.auth.dto.*;
 import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.user.Role;
@@ -103,6 +100,26 @@ public class AuthService {
                 .filter(u -> !u.isUserVerified())
                 .ifPresent(emailVerificationService::sendVerificationEmail);
         log.info("Verification email resent to: {}", email);
+    }
+
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String email = request.email().trim().toLowerCase();
+        userRepository.findByEmail(email).ifPresent(user -> {
+            emailVerificationService.sendPasswordResetEmail(user);
+            log.info("Password reset email sent to: {}", email);
+        });
+        log.info("Forgot password requested for: {}", email);
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        User user = emailVerificationService.verifyPasswordResetToken(request.token(), request.userId());
+        user = userRepository.findById(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setTokenVersion(user.getTokenVersion() + 1);
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+        refreshTokenService.revokeAllUserTokens(request.userId());
+        log.info("Password reset for user: {}", request.userId());
     }
 }
 

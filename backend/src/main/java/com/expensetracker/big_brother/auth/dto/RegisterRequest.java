@@ -1,5 +1,6 @@
 package com.expensetracker.big_brother.auth.dto;
 
+import com.expensetracker.big_brother.common.validation.ValidPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -14,5 +15,7 @@ public record RegisterRequest(
 
         @NotBlank
         @Size(min = 8, message = "Password must be at least 8 characters")
+        @Size(max = 128, message = "Password must be less than 128 characters")
+        @ValidPassword
         String password) {
 }
