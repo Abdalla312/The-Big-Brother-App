@@ -60,7 +60,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 //    changePassword_success│PATCH /me/password│200
     @Test
     void changePassword_Success_Returns200() throws Exception {
-        ChangePasswordRequest request = new ChangePasswordRequest("hashed", "NewPassw0rd");
+        ChangePasswordRequest request = new ChangePasswordRequest("hashed", "Password123#");
         performPatch("/api/v1/users/me/password", userAPrincipal, request)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Password updated"));
@@ -68,7 +68,7 @@ public class UserIntegrationTest extends BaseIntegrationTest {
 //    changePassword_wrongCurrent│PATCH /me/password│400
     @Test
     void changePassword_WrongCurrent_Returns400() throws Exception {
-        ChangePasswordRequest request = new ChangePasswordRequest("wr0ngPass", "testPassw0rd");
+        ChangePasswordRequest request = new ChangePasswordRequest("wr0ngPass", "Password123#");
         performPatch("/api/v1/users/me/password", userAPrincipal, request)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Current password is incorrect"))

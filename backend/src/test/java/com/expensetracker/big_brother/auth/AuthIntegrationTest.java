@@ -48,7 +48,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void register_ValidRequest_Returns201() throws Exception {
-        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "password123");
+        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "Password123#");
 
         performPost("/api/v1/auth/register", null, request)
                 .andExpect(status().isCreated())
@@ -57,7 +57,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void register_DuplicateEmail_Returns409() throws Exception {
-        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "password123");
+        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "Password123#");
 
         performPost("/api/v1/auth/register", null, request)
                 .andExpect(status().isCreated());
@@ -68,7 +68,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void login_BeforeVerification_Returns403() throws Exception {
-        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "password123");
+        RegisterRequest request = new RegisterRequest("John Doe", "john@example.com", "Password123#");
 
         performPost("/api/v1/auth/register", null, request)
                 .andExpect(status().isCreated());
