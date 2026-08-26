@@ -1,5 +1,6 @@
 package com.expensetracker.big_brother.transaction;
 
+import com.expensetracker.big_brother.transaction.dto.TransactionExportFilter;
 import com.expensetracker.big_brother.common.ApiResponse;
 import com.expensetracker.big_brother.common.PageResponse;
 import com.expensetracker.big_brother.common.TransactionType;
@@ -7,13 +8,20 @@ import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.transaction.dto.TransactionRequest;
 import com.expensetracker.big_brother.transaction.dto.TransactionResponse;
 import com.expensetracker.big_brother.transaction.dto.UpdateTransactionRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @RestController
@@ -42,6 +50,29 @@ public class TransactionController {
             @AuthenticationPrincipal CustomUserDetails user) {
         TransactionResponse response = transactionService.getTransaction(id, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(response, "Transaction retrieved"));
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    public void exportTransactions(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(required = false) TransactionType type,
+            @RequestParam(required = false) UUID categoryId,
+            HttpServletResponse response
+    ) throws IOException {
+
+        response.setContentType("text/csv");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
+        String timestamp = LocalDateTime.now().format(formatter);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"transactions-" + timestamp + ".csv\"");
+
+        TransactionExportFilter filter = new TransactionExportFilter(from, to, type, categoryId);
+        transactionService.exportTransactionsCsv(user.getUserId(),
+                filter,
+                response.getOutputStream());
     }
 
     @PostMapping

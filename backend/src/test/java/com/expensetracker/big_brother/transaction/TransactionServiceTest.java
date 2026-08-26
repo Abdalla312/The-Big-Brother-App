@@ -124,6 +124,18 @@ public class TransactionServiceTest {
     }
 
     @Test
+    void createTransaction_TransactionTypeMismatchWithCategory_ThrowsException() {
+        TransactionRequest request = new TransactionRequest(TransactionType.INCOME, new BigDecimal("200.0"),LocalDate.now(), null, null, categoryId);
+        Category category = aCategory();
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        assertThatThrownBy(() -> transactionService.createTransaction(request, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Transaction type mismatch with category");
+
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
     void createTransaction_categoryNotFound_throwsException() {
         TransactionRequest request = aTransactionRequest();
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.empty());
