@@ -4,6 +4,8 @@ import { showLoading } from '../components/loading.js';
 import { renderTable } from '../components/table.js';
 import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
+import { getAccessToken } from '../auth.js';
+import { API_URL } from '../config.js';
 
 let currentMonth = getCurrentMonth();
 let currentPage = 0;
@@ -26,10 +28,16 @@ async function renderPage(main, categories) {
   main.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Transactions</h1>
-      <button class="btn btn-primary" id="add-transaction-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Transaction
-      </button>
+      <div class="flex items-center gap-2">
+        <button class="btn btn-secondary" id="export-csv-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+        <button class="btn btn-primary" id="add-transaction-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Transaction
+        </button>
+      </div>
     </div>
 
     <div class="card">
@@ -59,6 +67,7 @@ async function renderPage(main, categories) {
   `;
 
   document.getElementById('add-transaction-btn').addEventListener('click', () => openTransactionModal(categories));
+  document.getElementById('export-csv-btn').addEventListener('click', () => downloadCsv());
   document.getElementById('filter-month').addEventListener('change', (e) => { currentMonth = e.target.value; currentPage = 0; loadTransactions(categories); });
   document.getElementById('filter-type').addEventListener('change', (e) => { currentType = e.target.value; currentPage = 0; loadTransactions(categories); });
   document.getElementById('filter-category').addEventListener('change', (e) => { currentCategoryId = e.target.value; currentPage = 0; loadTransactions(categories); });
@@ -224,4 +233,43 @@ function openTransactionModal(categories, existing = null) {
 
 function renderCategoryOptions(categories, selectedId) {
   return categories.map(c => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${c.name}</option>`).join('');
+}
+
+async function downloadCsv() {
+  const params = new URLSearchParams();
+  if (currentMonth) {
+    const [year, month] = currentMonth.split('-');
+    const lastDay = new Date(year, month, 0).getDate();
+    params.set('from', `${currentMonth}-01`);
+    params.set('to', `${currentMonth}-${String(lastDay).padStart(2, '0')}`);
+  }
+  if (currentType) params.set('type', currentType);
+  if (currentCategoryId) params.set('categoryId', currentCategoryId);
+
+  try {
+    const token = getAccessToken();
+    const res = await fetch(`${API_URL}/api/v1/transactions/export?${params}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
+
+    if (!res.ok) {
+      showToast('Failed to export transactions', 'error');
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+    a.download = `transactions-${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('CSV downloaded', 'success');
+  } catch {
+    showToast('Failed to export transactions', 'error');
+  }
 }
