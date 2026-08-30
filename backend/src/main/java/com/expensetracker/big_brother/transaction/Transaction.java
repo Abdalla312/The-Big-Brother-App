@@ -32,7 +32,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class Transaction extends BaseEntity {
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private TransactionType type;
 
     @Column(nullable = false, precision = 19, scale = 4)
@@ -41,7 +41,9 @@ public class Transaction extends BaseEntity {
     @Column(nullable = false)
     private LocalDate transactionDate;
 
+    @Column(columnDefinition = "TEXT")
     private String note;
+    @Column(length = 100)
     private String paymentMethod;
 
     @ManyToOne(fetch = FetchType.LAZY)

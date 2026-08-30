@@ -20,7 +20,7 @@ public class BaseEntity {
     private UUID id;
 
     @CreationTimestamp
-    @Column(updatable = false)
+    @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
