@@ -4,6 +4,7 @@ import { getCurrentPath } from '../router.js';
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
   { path: '/transactions', label: 'Transactions', icon: 'arrow-left-right' },
+  { path: '/recurring', label: 'Recurring', icon: 'repeat' },
   { path: '/categories', label: 'Categories', icon: 'tag' },
   { path: '/budgets', label: 'Budgets', icon: 'wallet' },
   { path: '/reports', label: 'Reports', icon: 'bar-chart-3' },
