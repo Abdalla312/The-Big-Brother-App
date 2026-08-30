@@ -25,14 +25,17 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Category extends BaseEntity {
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private TransactionType type;
 
+    @Column(length = 20)
     private String color;
+
+    @Column(length = 50)
     private String icon;
 
     @ManyToOne(fetch = FetchType.LAZY)
