@@ -5,6 +5,9 @@ import com.expensetracker.big_brother.budget.BudgetRepository;
 import com.expensetracker.big_brother.category.Category;
 import com.expensetracker.big_brother.category.CategoryRepository;
 import com.expensetracker.big_brother.common.TransactionType;
+import com.expensetracker.big_brother.recurring.RecurrenceFrequency;
+import com.expensetracker.big_brother.recurring.RecurringTransaction;
+import com.expensetracker.big_brother.recurring.RecurringTransactionRepository;
 import com.expensetracker.big_brother.refreshtoken.RefreshTokenRepository;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.transaction.Transaction;
@@ -51,6 +54,8 @@ public abstract class BaseIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
     @Autowired
     private EmailVerificationRepository emailVerificationRepository;
+    @Autowired
+    private RecurringTransactionRepository recurringTransactionRepository;
 
     // HTTP Request helper methods
     protected ResultActions performGet(String url, CustomUserDetails principal) throws Exception {
@@ -131,8 +136,23 @@ public abstract class BaseIntegrationTest {
         return budgetRepository.save(b);
     }
 
+    protected RecurringTransaction seedRecurringTransaction(
+            BigDecimal amount, LocalDate nextExecutionDate, RecurrenceFrequency frequency, TransactionType type,
+            User user, Category category, boolean active) {
+        RecurringTransaction r = new RecurringTransaction();
+        r.setAmount(amount);
+        r.setNextExecutionDate(nextExecutionDate);
+        r.setFrequency(frequency);
+        r.setType(type);
+        r.setUser(user);
+        r.setCategory(category);
+        r.setActive(active);
+        return recurringTransactionRepository.save(r);
+    }
+
     protected void clearDatabase() {
         budgetRepository.deleteAll();
+        recurringTransactionRepository.deleteAll();
         transactionRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         emailVerificationRepository.deleteAll();
