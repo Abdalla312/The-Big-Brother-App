@@ -9,12 +9,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Slf4j
 public class RecurringTransactionScheduler {
-    private final RecurringTransactionService service;
+    private final RecurringTransactionProcessor processor;
 
-    @Scheduled(cron = "0 10 11  * * ?")
+    @Scheduled(cron = "0 0 1 * * ?")
     public void runDailyRecurringProcessing() {
         log.info("Starting daily processing of recurring transactions...");
-        long totalProcessed = service.processDueTransactions();
+        long totalProcessed = processor.processDueTransactions();
         log.info("Finished processing recurring transactions. Executed: {}", totalProcessed);
     }
 }
