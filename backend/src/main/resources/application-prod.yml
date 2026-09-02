@@ -28,4 +28,4 @@ management:
 
 app:
   jwt:
-    access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:86400000}
+    access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000}
