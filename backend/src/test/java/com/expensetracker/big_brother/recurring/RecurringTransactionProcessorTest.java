@@ -5,6 +5,7 @@ import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.transaction.Transaction;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
 import com.expensetracker.big_brother.user.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -15,6 +16,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,6 +34,7 @@ public class RecurringTransactionProcessorTest {
     private RecurringTransactionRepository repository;
     @Mock
     private TransactionRepository transactionRepository;
+    @Mock private PlatformTransactionManager transactionManager;
     @InjectMocks
     private RecurringTransactionProcessor processor;
 
@@ -64,15 +69,19 @@ public class RecurringTransactionProcessorTest {
         return r;
     }
 
+    @BeforeEach
+    void setUp() {
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(mock(TransactionStatus.class));
+    }
+
     private Page<RecurringTransaction> aPage(List<RecurringTransaction> rules) {
         return new PageImpl<>(rules);
     }
 
     @SuppressWarnings("unchecked")
-    private Page<RecurringTransaction> aMockPage(List<RecurringTransaction> rules, boolean hasNext) {
+    private Page<RecurringTransaction> aMockPage(List<RecurringTransaction> rules) {
         Page<RecurringTransaction> page = mock(Page.class);
         when(page.getContent()).thenReturn(rules);
-        when(page.hasNext()).thenReturn(hasNext);
         return page;
     }
 
@@ -157,14 +166,16 @@ public class RecurringTransactionProcessorTest {
         RecurringTransaction r1 = aRule(RecurrenceFrequency.DAILY, LocalDate.now().minusDays(1));
         RecurringTransaction r2 = aRule(RecurrenceFrequency.WEEKLY, LocalDate.now());
 
-        when(repository.findDueBatch(any(LocalDate.class), any(Pageable.class))).thenReturn(aPage(List.of(r1, r2)));
+        when(repository.findDueBatch(any(LocalDate.class), any(Pageable.class)))
+                .thenReturn(aPage(List.of(r1, r2)))
+                .thenReturn(aPage(List.of()));
 
         long count = processor.processDueTransactions();
 
         assertThat(count).isEqualTo(2);
         verify(transactionRepository, times(2)).save(any(Transaction.class));
         verify(repository, times(2)).save(any(RecurringTransaction.class));
-        verify(repository).findDueBatch(LocalDate.now(), PageRequest.of(0, 100));
+        verify(repository, times(2)).findDueBatch(LocalDate.now(), PageRequest.of(0, 100));
     }
 
     @Test
@@ -173,16 +184,17 @@ public class RecurringTransactionProcessorTest {
         RecurringTransaction r2 = aRule(RecurrenceFrequency.WEEKLY, LocalDate.now());
         RecurringTransaction r3 = aRule(RecurrenceFrequency.MONTHLY, LocalDate.now());
 
-        Page<RecurringTransaction> page1 = aMockPage(List.of(r1, r2), true);
-        Page<RecurringTransaction> page2 = aMockPage(List.of(r3), false);
+        Page<RecurringTransaction> page1 = aMockPage(List.of(r1, r2));
+        Page<RecurringTransaction> page2 = aMockPage(List.of(r3));
 
         when(repository.findDueBatch(any(LocalDate.class), any(Pageable.class)))
                 .thenReturn(page1)
-                .thenReturn(page2);
+                .thenReturn(page2)
+                .thenReturn(aPage(List.of()));
         long count = processor.processDueTransactions();
 
         assertThat(count).isEqualTo(3);
-        verify(repository, times(2)).findDueBatch(any(LocalDate.class), any(Pageable.class));
+        verify(repository, times(3)).findDueBatch(any(LocalDate.class), any(Pageable.class));
         verify(transactionRepository, times(3)).save(any(Transaction.class));
     }
 
@@ -193,7 +205,9 @@ public class RecurringTransactionProcessorTest {
 
         Page<RecurringTransaction> page = aPage(List.of(r1, r2));
 
-        when(repository.findDueBatch(any(LocalDate.class), any(Pageable.class))).thenReturn(page);
+        when(repository.findDueBatch(any(LocalDate.class), any(Pageable.class)))
+                .thenReturn(page)
+                .thenReturn(aPage(List.of()));
         when(transactionRepository.save(any(Transaction.class)))
                 .thenThrow(new RuntimeException("boom"))
                 .thenReturn(null);
