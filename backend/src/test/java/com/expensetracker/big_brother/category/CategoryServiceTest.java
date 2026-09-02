@@ -9,6 +9,7 @@ import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.CategoryInUseException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.exception.ResourceOwnershipException;
+import com.expensetracker.big_brother.recurring.RecurringTransactionRepository;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
@@ -44,6 +45,8 @@ public class CategoryServiceTest {
     private OwnershipValidator ownershipValidator;
     @Mock
     private TransactionRepository transactionRepository;
+    @Mock
+    private RecurringTransactionRepository recurringTransactionRepository;
     @InjectMocks
     private CategoryService categoryService;
 
@@ -217,6 +220,7 @@ public class CategoryServiceTest {
         Category category = aCategory();
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
         when(transactionRepository.existsByCategoryId(categoryId)).thenReturn(false);
+        when(recurringTransactionRepository.existsByCategoryId(categoryId)).thenReturn(false);
 
         categoryService.deleteCategory(categoryId, userId);
         verify(categoryRepository).delete(category);
@@ -257,6 +261,17 @@ public class CategoryServiceTest {
         Category category = aCategory();
         when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
         when(transactionRepository.existsByCategoryId(categoryId)).thenReturn(true);
+        assertThatThrownBy(() -> categoryService.deleteCategory(categoryId, userId))
+                .isInstanceOf(CategoryInUseException.class);
+        verify(categoryRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteCategory_inUseByRecurring_throwsException() {
+        Category category = aCategory();
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(transactionRepository.existsByCategoryId(categoryId)).thenReturn(false);
+        when(recurringTransactionRepository.existsByCategoryId(categoryId)).thenReturn(true);
         assertThatThrownBy(() -> categoryService.deleteCategory(categoryId, userId))
                 .isInstanceOf(CategoryInUseException.class);
         verify(categoryRepository, never()).delete(any());
