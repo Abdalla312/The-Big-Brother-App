@@ -1,16 +1,15 @@
 spring:
-  datasource:
-    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
   jpa:
     hibernate:
       ddl-auto: create-drop
     properties:
       hibernate:
-        globally-quoted-identifiers: true
-        auto_quote_keyword: true
+        default_schema: public
+  flyway:
+    default-schema: public
+  test:
+    database:
+      replace: none
   mail:
     host: localhost
     port: 1025
@@ -34,3 +33,11 @@ app:
     secret: MDEyMzQ1Njc4OUFCQ0RFRjAxMjM0NTY3ODlBQkNERUY=
     access-token-expiry-ms: 9000000
     refresh-token-expiry-days: 30
+  verification:
+    expiry-hours: 1
+  brand:
+      name: "Big Brother Test"
+      primary-color: "#1E40AF"
+      support-email: "test@example.com"
+  reset:
+      expiry-minutes: 30

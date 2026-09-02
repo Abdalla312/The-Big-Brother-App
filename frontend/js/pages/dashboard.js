@@ -2,6 +2,8 @@ import { api } from '../api.js';
 import { formatCurrency, getCurrentMonth, getMonthLabel, getFirstDayOfMonth, getLastDayOfMonth, formatDate } from '../utils.js';
 import { showLoading } from '../components/loading.js';
 
+const FREQUENCY_LABELS = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
+
 export async function renderDashboard(main) {
   showLoading(main);
   const month = getCurrentMonth();
@@ -9,15 +11,17 @@ export async function renderDashboard(main) {
   const endDate = getLastDayOfMonth(month);
 
   try {
-    const [summaryRes, trendRes, transRes] = await Promise.all([
+    const [summaryRes, trendRes, transRes, recurRes] = await Promise.all([
       api.get(`/reports/summary?startDate=${startDate}&endDate=${endDate}`),
       api.get(`/reports/trend?startDate=${getFirstDayOfMonth(String(Number(month.split('-')[0]) - 1).padStart(4, '0') + '-01')}&endDate=${endDate}`),
       api.get(`/transactions?page=0&size=5&month=${month}`),
+      api.get('/recurring-transactions?page=0&size=5&sort=nextExecutionDate'),
     ]);
 
     const summary = summaryRes?.data || {};
     const trend = trendRes?.data || [];
     const transactions = transRes?.data?.content || [];
+    const recurring = (recurRes?.data?.content || []).filter(r => r.isActive);
 
     main.innerHTML = `
       <div class="page-header">
@@ -71,15 +75,22 @@ export async function renderDashboard(main) {
           <h3 class="text-sm font-semibold text-gray-700 mb-4">Monthly Trend</h3>
           <div style="height: 250px"><canvas id="trend-chart"></canvas></div>
         </div>
-        <div class="card">
-          <h3 class="text-sm font-semibold text-gray-700 mb-4">Recent Transactions</h3>
-          <div id="recent-transactions"></div>
+        <div class="flex flex-col gap-6">
+          <div class="card">
+            <h3 class="text-sm font-semibold text-gray-700 mb-4">Recent Transactions</h3>
+            <div id="recent-transactions"></div>
+          </div>
+          <div class="card">
+            <h3 class="text-sm font-semibold text-gray-700 mb-4">Upcoming Recurring Transactions</h3>
+            <div id="upcoming-recurring"></div>
+          </div>
         </div>
       </div>
     `;
 
     renderTrendChart(trend);
     renderRecentTransactions(transactions);
+    renderUpcomingRecurring(recurring);
   } catch (err) {
     main.innerHTML = `
       <div class="page-header">
@@ -172,6 +183,39 @@ function renderRecentTransactions(transactions) {
     </div>
     <div class="mt-4 text-center">
       <a onclick="window.location.hash='#/transactions'" class="text-sm text-brand-600 font-medium hover:text-brand-700 cursor-pointer">View all transactions</a>
+    </div>
+  `;
+}
+
+function renderUpcomingRecurring(items) {
+  const container = document.getElementById('upcoming-recurring');
+  if (!items.length) {
+    container.innerHTML = `<p class="text-sm text-gray-400 text-center py-8">No active recurring transactions</p>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="space-y-3">
+      ${items.map(r => `
+        <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+          <div class="flex items-center gap-3">
+            <div class="color-dot" style="background-color: ${r.category?.color || '#9ca3af'}"></div>
+            <div>
+              <p class="text-sm font-medium text-gray-900">${r.category?.name || 'Uncategorized'}</p>
+              <p class="text-xs text-gray-400">${formatDate(r.nextExecutionDate)}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-semibold ${r.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}">
+              ${r.type === 'INCOME' ? '+' : '-'}${formatCurrency(r.amount)}
+            </p>
+            <p class="text-xs text-gray-400">${FREQUENCY_LABELS[r.frequency] || r.frequency}</p>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="mt-4 text-center">
+      <a onclick="window.location.hash='#/recurring'" class="text-sm text-brand-600 font-medium hover:text-brand-700 cursor-pointer">View all recurring transactions</a>
     </div>
   `;
 }

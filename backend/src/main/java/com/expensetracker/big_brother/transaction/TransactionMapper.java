@@ -16,8 +16,6 @@ import java.util.List;
 public interface TransactionMapper {
     TransactionResponse toResponse(Transaction transaction);
 
-    List<Transaction> toResponseList(List<Transaction> transactions);
-
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

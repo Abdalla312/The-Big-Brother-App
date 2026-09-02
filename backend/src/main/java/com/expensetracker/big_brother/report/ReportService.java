@@ -9,14 +9,12 @@ import com.expensetracker.big_brother.transaction.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -84,25 +82,32 @@ public class ReportService {
                 )).sorted(Comparator.comparing(TrendResponse::month)).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<BudgetComparisonResponse> getBudgetComparison(UUID userId, String month) {
-
+        List<Budget> budgets = budgetRepository.findAllByUserIdAndMonth(userId, month);
         List<CategoryExpenses> spending = transactionRepository.expensesByCategory(userId, month);
 
-        List<Budget> budgets = budgetRepository.findAllByUserIdAndMonth(userId, month);
-        Map<UUID, BigDecimal> budgetMap = budgets.stream()
-                .collect(Collectors.toMap(
-                        b -> b.getCategory().getId(),
-                        Budget::getLimitAmount
-                ));
-        return spending.stream()
-                .map(s -> {
-                    BigDecimal budgeted = budgetMap.getOrDefault(s.categoryId(), BigDecimal.ZERO);
-                    BigDecimal remaining = budgeted.subtract(s.amount());
-                    double percentUsed = computePercentage(s.amount(), budgeted);
+        Map<UUID, BigDecimal> spendingMap = spending.stream()
+                .collect(Collectors.toMap(CategoryExpenses::categoryId, CategoryExpenses::amount));
+
+        List<BudgetComparisonResponse> responseList = new ArrayList<>(budgets.stream()
+                .map(budget -> {
+                    BigDecimal spent = spendingMap.getOrDefault(budget.getCategory().getId(), BigDecimal.ZERO);
+                    BigDecimal remaining = budget.getLimitAmount().subtract(spent);
+                    double percentUsed = computePercentage(spent, budget.getLimitAmount());
                     return new BudgetComparisonResponse(
-                            s.categoryId(), s.name(), s.color(),
-                            budgeted, s.amount(), remaining, percentUsed);
-                }).toList();
+                            budget.getCategory().getId(), budget.getCategory().getName(), budget.getCategory().getColor(),
+                            budget.getLimitAmount(), spent, remaining, percentUsed);
+                }).toList());
+
+        Set<UUID> budgetedCategoryIds = budgets.stream().map(b ->
+                b.getCategory().getId()).collect(Collectors.toSet());
+        spending.stream()
+                .filter(s -> !budgetedCategoryIds.contains(s.categoryId()))
+                .forEach(s -> responseList.add(new BudgetComparisonResponse(
+                        s.categoryId(), s.name(), s.color(),
+                        BigDecimal.ZERO, s.amount(), s.amount().negate(), 0.0)));
+        return responseList;
     }
 
     public List<PaymentBreakdown> paymentMethodBreakdowns(UUID userId, LocalDate from, LocalDate to, TransactionType type) {

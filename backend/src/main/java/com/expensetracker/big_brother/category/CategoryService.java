@@ -8,6 +8,7 @@ import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.CategoryInUseException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.exception.ResourceOwnershipException;
+import com.expensetracker.big_brother.recurring.RecurringTransactionRepository;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
@@ -31,6 +32,7 @@ public class CategoryService {
     private final UserRepository userRepository;
     private final OwnershipValidator ownershipValidator;
     private final TransactionRepository transactionRepository;
+    private final RecurringTransactionRepository recurringTransactionRepository;
 
     public PageResponse<CategoryResponse> getAllCategories(UUID userId, String type, Pageable pageable) {
         Page<Category> categories;
@@ -76,7 +78,7 @@ public class CategoryService {
             throw new ResourceOwnershipException();
         }
         ownershipValidator.validateOwnership(category.getUser().getId(), userId);
-        if (transactionRepository.existsByCategoryId(categoryId)){
+        if (transactionRepository.existsByCategoryId(categoryId) || recurringTransactionRepository.existsByCategoryId(categoryId)){
             throw new CategoryInUseException();
         }
         categoryRepository.delete(category);

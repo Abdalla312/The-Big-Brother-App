@@ -4,18 +4,32 @@ import { getCurrentPath } from '../router.js';
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
   { path: '/transactions', label: 'Transactions', icon: 'arrow-left-right' },
+  { path: '/recurring', label: 'Recurring', icon: 'repeat' },
   { path: '/categories', label: 'Categories', icon: 'tag' },
   { path: '/budgets', label: 'Budgets', icon: 'wallet' },
   { path: '/reports', label: 'Reports', icon: 'bar-chart-3' },
   { path: '/profile', label: 'Profile', icon: 'user' },
 ];
 
+function isCollapsed() {
+  return localStorage.getItem('sidebar-collapsed') === 'true';
+}
+
+function applyState() {
+  const container = document.getElementById('sidebar-container');
+  const btn = document.getElementById('sidebar-toggle');
+  if (!container || !btn) return;
+  const collapsed = isCollapsed();
+  container.classList.toggle('collapsed', collapsed);
+  btn.classList.toggle('collapsed', collapsed);
+}
+
 export function renderSidebar() {
   const container = document.getElementById('sidebar-container');
   const user = getUser();
 
   container.innerHTML = `
-    <aside class="hidden md:flex w-64 flex-col bg-slate-900 text-white">
+    <aside class="flex w-full h-full min-w-[256px] flex-col bg-slate-900 text-white">
       <div class="flex h-16 items-center gap-3 px-5 border-b border-slate-700/50">
         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white text-sm font-bold">B</div>
         <span class="text-lg font-bold tracking-tight">Big Brother</span>
@@ -46,8 +60,22 @@ export function renderSidebar() {
     </aside>
   `;
 
+  let toggleBtn = document.getElementById('sidebar-toggle');
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.id = 'sidebar-toggle';
+    toggleBtn.innerHTML = '<i data-lucide="chevron-left" class="toggle-icon"></i>';
+    document.getElementById('app').appendChild(toggleBtn);
+
+    toggleBtn.addEventListener('click', () => {
+      localStorage.setItem('sidebar-collapsed', isCollapsed() ? 'false' : 'true');
+      applyState();
+    });
+  }
+
   lucide.createIcons();
   updateActiveLink();
+  applyState();
 
   document.getElementById('sidebar-logout').addEventListener('click', async () => {
     try {

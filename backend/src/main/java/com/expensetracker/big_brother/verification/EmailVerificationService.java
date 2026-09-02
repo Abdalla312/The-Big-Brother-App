@@ -30,7 +30,7 @@ public class EmailVerificationService {
     private String frontendUrl;
     @Value("${app.verification.expiry-hours:1}")
     private int verificationExpiryHours;
-    @Value("${app.reset.expiry-minuets}")
+    @Value("${app.reset.expiry-minutes}")
     private int resetExpiryMinutes;
 
     public EmailVerificationService(

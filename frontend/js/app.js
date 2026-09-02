@@ -41,6 +41,11 @@ async function loadTransactions(main) {
   await renderTransactions(main);
 }
 
+async function loadRecurring(main) {
+  const { renderRecurring } = await import('./pages/recurring.js');
+  await renderRecurring(main);
+}
+
 async function loadCategories(main) {
   const { renderCategories } = await import('./pages/categories.js');
   await renderCategories(main);
@@ -84,6 +89,7 @@ addRoute('/resend-verification', authLayout(async (params) => {
 addRoute('/dashboard', appLayout(loadDashboard));
 addRoute('/', appLayout(loadDashboard));
 addRoute('/transactions', appLayout(loadTransactions));
+addRoute('/recurring', appLayout(loadRecurring));
 addRoute('/categories', appLayout(loadCategories));
 addRoute('/budgets', appLayout(loadBudgets));
 addRoute('/reports', appLayout(loadReports));
