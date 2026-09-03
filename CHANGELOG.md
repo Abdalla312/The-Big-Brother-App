@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+Nothing yet.
+
+---
+
+## [0.2.0] — 2026-09-03
+
+### Added
+- Recurring transactions module with daily scheduler, pause/resume, and frontend UI
+- `RecurringTransactionProcessor` extracting recurring-entry scheduling logic
+- Password reset flow (`forgot-password` / `reset-password`) via `EmailVerificationToken`
+- `token_type` column on `EmailVerificationToken` for password-reset tokens
+- Password complexity validation (`@ValidPassword`)
+- Transaction CSV export endpoint plus frontend download action and API docs
+- HTML/CSS/JS development client (auth, transactions, categories, budgets, reports)
+- Persistent collapsible sidebar in frontend
+- Thymeleaf email templating system
+- Docker Compose environment (PostgreSQL + Mailhog) for local dev
+- Configurable CORS origins via `CORS_ALLOWED_ORIGINS` env var
+- Single-flight token refresh and safe retry in frontend API client
+- AWS ECS Fargate deployment pipeline with ECR and task definitions
+
+### Changed
+- Migrated integration tests from H2 to Testcontainers PostgreSQL
+- Frontend served from backend container to fix mixed content
+- Dockerfile enhancements (Maven dependency caching, Railway compatibility)
+- Aligned JPA column metadata with Flyway schema for `ddl-auto=validate`
+- Consolidated email verification unique constraint into V7 migration
+- Updated README (password reset, recurring transactions, CSV export, infrastructure)
+
+### Fixed
+- Category deletion FK violation when referenced by recurring transactions
+- Recurring transaction isolation (`REQUIRES_NEW`) and pagination offset drift
+- `inMonth` `DateTimeException` on malformed date input
+- Filter-chain crash on invalid JWT
+- Report budget comparison including budgeted and unbudgeted categories
+- Empty-string handling (`??` → `||`)
+- Password reset token expiry configuration
+- Registration flow and rate limiting
+- Frontend auth issues (token refresh, API client retries)
+
+---
+
 ## [0.1.0] — 2026-07-25
 
 ### Added
@@ -26,13 +70,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
-
-### Added
-- Architecture Decisions section in README
-- Mermaid ER and architecture diagrams in README
-- AWS ECS Fargate deployment section in README
-- Screenshots/Demo placeholder section in README
-- `.env.example` template file
-- `docker-compose.yml` with PostgreSQL 17 + Mailhog
-- Apache 2.0 license
+[0.2.0]: https://github.com/Abdalla312/The-Big_Brother-App/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Abdalla312/The-Big_Brother-App/releases/tag/v0.1.0
