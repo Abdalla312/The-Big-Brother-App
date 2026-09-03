@@ -1,4 +1,4 @@
-# Big Brother 💰
+﻿# Big Brother 💰
 
 [![Latest Release](https://img.shields.io/github/v/release/Abdalla312/The-Big-Brother-App?display_name=tag&sort=semver)](https://github.com/Abdalla312/The-Big-Brother-App/releases)
 [![License](https://img.shields.io/github/license/Abdalla312/The-Big-Brother-App)](LICENSE)
@@ -24,9 +24,9 @@ category budgets, and monitor your spending — all with JWT-authenticated, mult
 - **Rate limiting** — Token-bucket algorithm protecting endpoints (configurable capacity, refill rate)
 - **Refresh tokens** — Secure token rotation with versioned refresh tokens
 - **Reports & analytics** — Category breakdowns, payment-method breakdowns, monthly trends, and summaries
-- **Database migrations** — Flyway manages schema versioning (9 migrations)
-- **Comprehensive testing** — Unit + integration tests with H2 in-memory DB
-- **Frontend** — Dev-only HTML/JS testing client and a **React Native (Expo) mobile app** in progress as the primary client
+- **Database migrations** — Flyway manages schema versioning (11 migrations)
+- **Comprehensive testing** — Unit + integration tests with Testcontainers PostgreSQL
+- **Frontend** — Static HTML/JS client for development and testing; a React Native mobile app is planned as the primary client
 
 ---
 
@@ -45,8 +45,8 @@ category budgets, and monitor your spending — all with JWT-authenticated, mult
 | **Mail**       | Spring Mail (SMTP)                         |
 | **Docs**       | SpringDoc OpenAPI 2.8.5                    |
 | **Monitoring** | Spring Boot Actuator                       |
-| **Tests**      | JUnit 5, H2, Spring Boot Test              |
-| **Infra**      | Docker, Railway                            |
+| **Tests**      | JUnit 5, Spring Boot Test, Testcontainers PostgreSQL |
+| **Infra**      | Docker, Docker Compose, GitHub Actions, AWS ECS Fargate |
 
 ---
 
@@ -63,7 +63,7 @@ category budgets, and monitor your spending — all with JWT-authenticated, mult
 | MapStruct for DTO mapping | Compile-time-safe mapping. No runtime reflection overhead. |
 | Jakarta Bean Validation on DTOs | Validation rules live close to the input layer. Keeps entities clean and focused on persistence. |
 | `@Transactional(readOnly = true)` on read methods | Reduces transaction overhead on queries. Hibernate optimizes read-only sessions. |
-| H2 in PostgreSQL mode for tests | Fast, no external dependencies needed. Tests run without a real PostgreSQL instance. |
+| Testcontainers PostgreSQL for tests | Integration tests exercise the same database family used in development and production. |
 | Consistent `ApiResponse` wrapper | Frontend has one error-handling pattern for all endpoints. No guessing the response shape. |
 | Pagination on all list endpoints | A user with thousands of transactions can't load all at once on mobile. Standard page sizes (20–50). |
 | Token-bucket rate limiting (custom) | No external dependency. Protects auth endpoints from brute-force. Configurable capacity and refill rate. |
@@ -175,6 +175,13 @@ All endpoints are prefixed with `/api/v1`. Most require a `Authorization: Bearer
 | GET    | `/api/v1/auth/verify-email?userId=&token=` | No   | Verify email from link                                      |
 | POST   | `/api/v1/auth/resend-verification`         | No   | Resend verification (5-min cooldown)                        |
 
+### Password Reset
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/v1/auth/forgot-password | No | Request a password reset email |
+| POST | /api/v1/auth/reset-password | No | Reset password with a valid token |
+
 ### Categories
 
 | Method | Path                      | Auth | Description                                |
@@ -193,6 +200,17 @@ All endpoints are prefixed with `/api/v1`. Most require a `Authorization: Bearer
 | POST   | `/api/v1/transactions`      | Yes  | Create transaction                                      |
 | PATCH  | `/api/v1/transactions/{id}` | Yes  | Update transaction                                      |
 | DELETE | `/api/v1/transactions/{id}` | Yes  | Delete transaction                                      |
+| GET    | `/api/v1/transactions/export` | Yes | Export transactions as CSV                           |
+
+### Recurring Transactions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/recurring-transactions` | Yes | List recurring transactions |
+| POST | `/api/v1/recurring-transactions` | Yes | Create recurring transaction |
+| PATCH | `/api/v1/recurring-transactions/{id}` | Yes | Update recurring transaction |
+| DELETE | `/api/v1/recurring-transactions/{id}` | Yes | Delete recurring transaction |
+| PATCH | `/api/v1/recurring-transactions/{id}/toggle` | Yes | Pause or resume recurring transaction |
 
 ### Budgets
 
@@ -296,15 +314,15 @@ Big_Brother/
 │   │   │       ├── application.yml
 │   │   │       ├── application-dev.yml
 │   │   │       ├── application-prod.yml
-│   │   │       └── db/migration/   # Flyway migrations (V1-V9)
+│   │   │       └── db/migration/   # Flyway migrations (V1-V11)
 │   │   └── test/
 │   ├── Dockerfile
 │   ├── pom.xml
 │   ├── mvnw / mvnw.cmd
 │   ├── api-docs.json               # Full OpenAPI 3.1 spec
 │   └── railway.json
-├── frontend/                        # Dev-only HTML/JS testing client
-├── docker-compose.yml              # PostgreSQL + Mailhog for local dev
+├── frontend/                        # Static development/testing client
+├── backend/docker-compose.yml      # PostgreSQL + Mailhog for local dev
 └── .gitignore
 ```
 
@@ -312,18 +330,19 @@ Big_Brother/
 
 ## Database Schema
 
-9 Flyway migrations create these tables:
+11 Flyway migrations create these tables:
 
-| Table                      | Key columns                                                     | Notes                             |
-|----------------------------|-----------------------------------------------------------------|-----------------------------------|
-| `users`                    | id (UUID), email, password_hash, role, user_verified, pending_email, token_version | Unique email (V8, V9) |
-| `categories`               | id (UUID), name, type, color, icon, user_id                     | Null user_id = system default     |
-| `transactions`             | id (UUID), type, amount, transaction_date, user_id, category_id |                                   |
-| `budgets`                  | id (UUID), month (YYYY-MM), limit_amount, user_id, category_id  | Unique on (user, category, month) |
-| `email_verification_token` | token_hash (SHA-256), user_id, expires_at                       | One token per user                |
-| `refresh_tokens`           | token_hash, user_id, expires_at, token_version                  | Versioned refresh tokens (V9)     |
+| Table | Key columns | Notes |
+|---|---|---|
+| `users` | id (UUID), name, email, password_hash, role, user_verified, pending_email, token_version | Unique email; token version invalidates older access tokens |
+| `categories` | id (UUID), name, type, color, icon, user_id | A null `user_id` identifies a system-default category |
+| `transactions` | id (UUID), type, amount, transaction_date, note, payment_method, user_id, category_id | Owned by a user and linked to a category |
+| `budgets` | id (UUID), month (YYYY-MM), limit_amount, user_id, category_id | Unique on `(user_id, category_id, month)` |
+| `email_verification_token` | id, token_hash, user_id, expires_at, token_type | Supports email verification, email change, and password reset tokens; unique per user and type |
+| `refresh_token` | id, token_hash, user_id, expires_at, revoked, token_version | Hashed, revocable refresh-token persistence |
+| `recurring_transactions` | id, user_id, category_id, type, amount, frequency, next_execution_date, is_active | Scheduled recurring entries with pause/resume support |
 
-Additional migrations: V8 adds `pending_email` column to users, V9 adds token versioning and refresh tokens table.
+Migration highlights: V8 adds pending email support, V9 adds token versioning and refresh tokens, V10 adds token types and password-reset constraints, and V11 adds recurring transactions.
 
 **Default categories** (seed migration V6): Food & Dining, Transportation, Housing, Utilities (expenses) + Salary,
 Investments (income).
@@ -346,16 +365,16 @@ erDiagram
 ```mermaid
 graph TB
     subgraph Client["Client"]
-        M[React Native / Expo App<br/>(Primary Client)]
-        D[HTML/JS Dev Client<br/>(Development Only)]
+        M["React Native Mobile App - Planned Primary Client"]
+        D["HTML/JS Development Client - Development Only"]
     end
 
-    subgraph "AWS Cloud (Planned)"
-        LB[Load Balancer / ALB]
-        API[Spring Boot API<br/>ECS Fargate]
-        DB[(PostgreSQL 17<br/>RDS)]
-        CACHE[(ElastiCache Redis)]
-        SES[AWS SES / Mailgun<br/>(Transactional Email)]
+    subgraph AWS["AWS Cloud - Configured Deployment"]
+        LB["Application Load Balancer"]
+        API["Spring Boot API - ECS Fargate"]
+        DB[("PostgreSQL 17 - RDS")]
+        CACHE[("ElastiCache Redis")]
+        SES["AWS SES / Mailgun - Transactional Email"]
     end
 
     M -->|HTTPS| LB
@@ -408,62 +427,32 @@ graph TB
 | `spring.datasource.hikari.maximum-pool-size` | `10` (configurable via `DB_POOL_SIZE`) | Connection pool max |
 | `spring.datasource.hikari.minimum-idle` | `2` | Minimum idle connections |
 
-**Test profile** (`src/test/resources/application.yml`) uses H2 in PostgreSQL compatibility mode, so tests run without a real PostgreSQL instance.
+**Test profile** (`src/test/resources/application.yml`) uses Testcontainers PostgreSQL, so integration tests run against a real PostgreSQL-compatible database.
 
-```yaml
-# Test datasource (H2)
-spring:
-  datasource:
-    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
-    driver-class-name: org.h2.Driver
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-```
+Integration tests provision PostgreSQL through Testcontainers.
 
 ---
 
 ## Testing
 
-Tests use H2 in PostgreSQL compatibility mode. 14 test classes covering all service layers and endpoints:
+Tests use Testcontainers PostgreSQL for integration coverage and JUnit 5 for unit tests:
 
 ```bash
+cd backend
 ./mvnw test
 ```
 
-- **Unit tests**: `AuthServiceTest`, `BudgetServiceTest`, `CategoryServiceTest`, `TransactionServiceTest`, `UserServiceTest`, `RefreshTokenServiceTest`, `TokenBucketTest`
-- **Integration tests**: `AuthIntegrationTest`, `BudgetIntegrationTest`, `CategoryIntegrationTest`, `TransactionIntegrationTest`, `UserIntegrationTest`
-- **Base class**: `BaseIntegrationTest` — Shared setup for all integration tests
-
+Coverage includes authentication, refresh tokens, users, transactions, recurring transactions, categories, budgets, reports, email verification, password reset, and rate limiting.
 ---
-
 ## Deployment
 
-Two deployment targets are configured:
+The configured [GitHub Actions workflow](.github/workflows/deploy.yml) runs on pushes to `main`. It runs backend tests, builds the static development client, copies it into the backend resources, pushes a Docker image to Amazon ECR, and updates the AWS ECS Fargate service.
 
-| Target    | Config                           | Status    |
-|-----------|----------------------------------|-----------|
-| **Railway** (current) | `backend/railway.json` | Deployed |
-| **AWS ECS Fargate** (planned) | `backend/plans/aws_deployment_guide.md` | In progress |
-
-### AWS ECS Fargate (Planned)
-
-The backend will run as a containerized service on AWS ECS Fargate. Key architectural decisions:
-
-1. **ECS Fargate** over EC2 — no server management, pay-per-use, built-in scaling
-2. **RDS PostgreSQL** for managed database
-3. **AWS Secrets Manager** for environment variables (DB credentials, JWT secret)
-4. **Application Load Balancer** for HTTPS termination and traffic routing
-5. **CloudWatch** for logging and monitoring
-6. **Route 53** for DNS + **ACM** for SSL certificates
-
-All configuration comes from environment variables — no hardcoded secrets.
-
----
+This repository documents the deployment pipeline as configured; it does not assert that a live production service is currently healthy.
 
 ## Screenshots & Demo
 
-> Screenshots and a demo GIF/video will be added here once the mobile app and dashboard are complete.
+> Screenshots and a public demo will be added after the React Native mobile client and production deployment are available.
 
 ---
 
@@ -477,25 +466,23 @@ or Swagger UI for interactive exploration.
 ## Known Issues & Roadmap
 
 **Completed:**
+- Transaction filtering, pagination, and CSV export
+- Recurring transactions with scheduled processing and pause/resume
+- Password reset API flow
 - Pagination for categories and budgets
 - Rate limiting on auth endpoints
-- JWT refresh token rotation + revocation
-- `docker-compose.yml` with PostgreSQL + Mailhog
-- `.env.example` template
-- Architecture documentation (diagrams + ADRs)
-- Apache 2.0 license
+- JWT refresh token rotation and revocation
+- Docker Compose with PostgreSQL and Mailhog
+- AWS ECS deployment workflow
 
-**Planned features:**
-- Recurring transactions
-- React Native mobile app (Expo Router)
+**Planned or in progress:**
+- React Native mobile app as the primary client
+- Password-reset UI in the static client and mobile app
 - Enhanced dashboard analytics
-- CSV export
-- AWS ECS Fargate deployment
+- Production screenshots and a verified public demo
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and [GitHub Releases](https://github.com/Abdalla-99/Big_Brother/releases) for downloadable artifacts.
-
 ---
-
 ## License
 
 Licensed under the [Apache License 2.0](LICENSE).

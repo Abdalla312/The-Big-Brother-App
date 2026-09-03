@@ -92,13 +92,13 @@ public class RefreshTokenService {
     @Transactional
     public void cleanupExpiredTokens() {
         refreshTokenRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+        log.info("Expired refresh tokens cleaned up");
     }
 
     private String hashToken(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            log.info("Expired refresh tokens cleaned up");
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
