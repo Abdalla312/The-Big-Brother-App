@@ -28,7 +28,7 @@ import java.util.List;
 @EnableScheduling
 public class SecurityConfig {
 
-    @Value("${CORS_ALLOWED_ORIGINS}")
+    @Value("${CORS_ALLOWED_ORIGINS:http://localhost:*}")
     private String allowedOrigins;
 
     @Bean
