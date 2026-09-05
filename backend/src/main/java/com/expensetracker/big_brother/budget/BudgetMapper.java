@@ -22,12 +22,12 @@ public interface BudgetMapper {
         BigDecimal remaining = budget.getLimitAmount().subtract(spent);
         if (budget.getLimitAmount().compareTo(BigDecimal.ZERO) == 0){
             return new BudgetResponse(
-                    base.id(), base.category(), base.month(), base.limitAmount(), spent, spent.negate(), 0.0);
+                    base.id(), base.category(), base.month(), base.limitAmount(), spent, spent.negate(), 0.0, base.deletedAt());
         }
         double percent = spent.doubleValue() / budget.getLimitAmount().doubleValue() * 100.0;
         return new BudgetResponse(
                 base.id(), base.category(), base.month(), base.limitAmount(),
-                spent, remaining, Math.round(percent * 100.0) / 100.0);
+                spent, remaining, Math.round(percent * 100.0) / 100.0, base.deletedAt());
     }
 
 }

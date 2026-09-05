@@ -16,10 +16,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -84,4 +83,19 @@ public class CategoryService {
         categoryRepository.delete(category);
     }
 
+    @Transactional(readOnly = true)
+    public Page<CategoryResponse> getDeletedCategories(UUID userId, Pageable pageable) {
+        Page<Category> deletedCategories = categoryRepository.findDeletedCategories(userId, pageable);
+        return deletedCategories.map(categoryMapper::toResponse);
+    }
+
+    @Transactional
+    public CategoryResponse restoreDeletedCategory(UUID userId, UUID id) {
+        Category category = categoryRepository.findDeletedById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", id));
+        ownershipValidator.validateOwnership(category.getUser().getId(), userId);
+        category.setDeletedAt(null);
+        categoryRepository.save(category);
+        return categoryMapper.toResponse(category);
+    }
 }

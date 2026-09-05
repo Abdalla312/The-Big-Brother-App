@@ -59,4 +59,14 @@ public class CategoryController {
         categoryService.deleteCategory(id, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(null, "Category deleted"));
     }
+
+    @GetMapping("/trash")
+    public ResponseEntity<ApiResponse<PageResponse<CategoryResponse>>> getCategoriesTrash(@AuthenticationPrincipal CustomUserDetails user, Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.from(categoryService.getDeletedCategories(user.getUserId(), pageable)), "Categories trash retrieved"));
+    }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<CategoryResponse>> restoreDeletedCategory(@AuthenticationPrincipal CustomUserDetails user, @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(categoryService.restoreDeletedCategory(user.getUserId(), id), "Category restored"));
+    }
 }

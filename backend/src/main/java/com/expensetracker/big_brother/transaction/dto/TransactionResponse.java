@@ -17,6 +17,7 @@ public record TransactionResponse(
         String paymentMethod,
         CategoryResponse category,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        LocalDateTime deletedAt
 ) {
 }

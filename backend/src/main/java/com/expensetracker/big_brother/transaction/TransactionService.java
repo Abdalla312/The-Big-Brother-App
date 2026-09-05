@@ -1,6 +1,5 @@
 package com.expensetracker.big_brother.transaction;
 
-import com.expensetracker.big_brother.transaction.dto.TransactionExportFilter;
 import com.expensetracker.big_brother.category.Category;
 import com.expensetracker.big_brother.category.CategoryRepository;
 import com.expensetracker.big_brother.common.PageResponse;
@@ -8,6 +7,7 @@ import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.exception.ResourceOwnershipException;
+import com.expensetracker.big_brother.transaction.dto.TransactionExportFilter;
 import com.expensetracker.big_brother.transaction.dto.TransactionRequest;
 import com.expensetracker.big_brother.transaction.dto.TransactionResponse;
 import com.expensetracker.big_brother.transaction.dto.UpdateTransactionRequest;
@@ -229,6 +229,24 @@ public class TransactionService {
         sql.append(" ORDER BY t.transaction_date DESC, t.id DESC");
 
         return new SqlQuery(sql.toString(),params);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> getTransactionsTrash(UUID userId, Pageable pageable) {
+        Page<Transaction> resultPage = transactionRepository.findDeletedTransactions(userId, pageable);
+        return resultPage.map(transactionMapper::toResponse);
+    }
+
+    @Transactional
+    public TransactionResponse restoreTransaction(UUID userId, UUID id) {
+        Transaction transaction = transactionRepository.findDeletedById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Deleted transaction", id));
+
+        ownershipValidator.validateOwnership(transaction.getUser().getId(), userId);
+
+        transaction.setDeletedAt(null);
+        transactionRepository.save(transaction);
+        return transactionMapper.toResponse(transaction);
     }
 
     private record SqlQuery(

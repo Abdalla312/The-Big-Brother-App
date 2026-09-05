@@ -1,5 +1,6 @@
 package com.expensetracker.big_brother.recurring;
 
+import com.expensetracker.big_brother.common.BypassSoftDelete;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -7,7 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface RecurringTransactionRepository extends JpaRepository<RecurringTransaction, UUID> {
@@ -19,4 +20,12 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
     Page<RecurringTransaction> findDueBatch(@Param("date") LocalDate date, Pageable batch);
 
     boolean existsByCategoryId(UUID categoryId);
+
+    @BypassSoftDelete
+    @Query("SELECT r FROM RecurringTransaction r WHERE r.deletedAt IS NOT NULL AND r.user.id = :userId ")
+    Page<RecurringTransaction> findDeletedRecurringTransactions(UUID userId, Pageable pageable);
+
+    @BypassSoftDelete
+    @Query("SELECT r FROM RecurringTransaction r WHERE r.deletedAt IS NOT NULL AND r.id = :id ")
+    Optional<RecurringTransaction> findDeletedById(UUID id);
 }

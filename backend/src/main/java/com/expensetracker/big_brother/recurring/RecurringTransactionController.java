@@ -9,6 +9,7 @@ import com.expensetracker.big_brother.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -70,5 +71,20 @@ public class RecurringTransactionController {
             @AuthenticationPrincipal CustomUserDetails user) {
         service.deleteRecurringTransaction(id, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(null, "Deleted successfully"));
+    }
+
+    @GetMapping("/trash")
+    public ResponseEntity<ApiResponse<PageResponse<RecurringTransactionResponse>>> getDeletedRules(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PageableDefault(size = 20, sort = "deletedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.from(
+                service.getDeletedRecurringTransactions(user.getUserId(), pageable)), "Deleted recurring transactions retrieved"));
+    }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<RecurringTransactionResponse>> restoreDeletedRule(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(service.restoreDeletedRule(user.getUserId(), id), "Recurring transaction restored"));
     }
 }
