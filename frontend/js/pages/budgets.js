@@ -3,6 +3,8 @@ import { formatCurrency, getCurrentMonth, getMonthLabel } from '../utils.js';
 import { showLoading, showEmpty } from '../components/loading.js';
 import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
+import { openTrashModal } from '../components/trash-modal.js';
+import { formatDate } from '../utils.js';
 
 let currentMonth = getCurrentMonth();
 
@@ -12,10 +14,16 @@ export async function renderBudgets(main) {
   main.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Budgets</h1>
-      <button class="btn btn-primary" id="add-budget-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Budget
-      </button>
+      <div class="flex items-center gap-2">
+        <button class="btn btn-secondary" id="trash-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Trash
+        </button>
+        <button class="btn btn-primary" id="add-budget-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Budget
+        </button>
+      </div>
     </div>
 
     <div class="flex items-center gap-3 mb-4">
@@ -28,6 +36,7 @@ export async function renderBudgets(main) {
   `;
 
   document.getElementById('add-budget-btn').addEventListener('click', () => openBudgetModal(null));
+  document.getElementById('trash-btn').addEventListener('click', () => openTrashBudgets());
   document.getElementById('budget-month').addEventListener('change', (e) => {
     currentMonth = e.target.value;
     document.querySelector('#budget-month + span').textContent = getMonthLabel(currentMonth);
@@ -177,5 +186,29 @@ async function openBudgetModal(existing, preloadedCategories) {
       closeModal();
       loadBudgets();
     } catch {}
+  });
+}
+
+function openTrashBudgets() {
+  openTrashModal({
+    title: 'Deleted Budgets',
+    emptyMessage: 'No deleted budgets',
+    fetchTrash: (page) => api.get(`/budget/trash?page=${page}&size=20&sort=deletedAt,desc`),
+    restoreItem: (id) => api.put(`/budget/${id}/restore`),
+    onClose: loadBudgets,
+    columns: [
+      { header: 'Category', key: 'category', render: (r) => `
+          <div class="flex items-center gap-2">
+            <span class="color-dot" style="background-color: ${r.category?.color || '#9ca3af'}; width: 1.5rem; height: 1.5rem;"></span>
+            <span class="text-sm font-medium">${r.category?.name || 'Unknown'}</span>
+          </div>` },
+      { header: 'Month', key: 'month', render: (r) => `<span class="text-sm">${getMonthLabel(r.month)}</span>` },
+      { header: 'Limit', key: 'limitAmount', render: (r) => `<span class="text-sm font-semibold">${formatCurrency(r.limitAmount)}</span>` },
+      { header: 'Deleted At', key: 'deletedAt', render: (r) => `<span class="text-sm text-gray-500">${formatDate(r.deletedAt)}</span>` },
+      { header: '', key: 'actions', render: (r) => `
+          <button class="btn btn-ghost btn-sm p-1 restore-btn text-green-600 hover:text-green-800" data-id="${r.id}" title="Restore">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/><path d="M5 18v-2a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v2"/></svg>
+          </button>` },
+    ],
   });
 }

@@ -268,6 +268,9 @@ export const api = {
   patch: (url, body) =>
     request('PATCH', url, body),
 
+  put: (url, body) =>
+    request('PUT', url, body),
+
   delete: (url, body) =>
     request('DELETE', url, body),
 };
