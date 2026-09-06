@@ -4,6 +4,7 @@ import com.expensetracker.big_brother.category.dto.CategoryResponse;
 import com.expensetracker.big_brother.category.dto.CreateCategoryRequest;
 import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
 import com.expensetracker.big_brother.common.PageResponse;
+import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.CategoryInUseException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
@@ -33,13 +34,10 @@ public class CategoryService {
     private final TransactionRepository transactionRepository;
     private final RecurringTransactionRepository recurringTransactionRepository;
 
-    public PageResponse<CategoryResponse> getAllCategories(UUID userId, String type, Pageable pageable) {
-        Page<Category> categories;
-        switch (type) {
-            case "default" -> categories = categoryRepository.findAllByUserIdIsNull(pageable);
-            case "all" -> categories = categoryRepository.findAllByUserIdOrUserIsNull(userId, pageable);
-            default -> categories = categoryRepository.findAllByUserId(userId, pageable);
-        }
+    public PageResponse<CategoryResponse> getAllCategories(UUID userId, TransactionType type, boolean defaultCategories, Pageable pageable) {
+        Page<Category> categories = defaultCategories
+                ? categoryRepository.findDefaultCategories(type, pageable)
+                : categoryRepository.findUserCategories(userId, type, pageable);
         return PageResponse.from(categories.map(categoryMapper::toResponse));
     }
 
