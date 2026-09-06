@@ -3,6 +3,7 @@ package com.expensetracker.big_brother.transaction;
 import com.expensetracker.big_brother.common.BypassSoftDelete;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.report.dto.projection.*;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,6 +18,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID>, JpaSpecificationExecutor<Transaction> {
+
+    @Override
+    @Query("SELECT t FROM Transaction t WHERE t.id = :id ")
+    @NotNull
+    Optional<Transaction> findById(@NotNull UUID id);
 
     boolean existsByCategoryId(UUID categoryId);
 

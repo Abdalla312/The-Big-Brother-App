@@ -14,6 +14,10 @@ import java.util.UUID;
 
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
+    @Override
+    @Query("SELECT c FROM Category c WHERE c.id = :id")
+    @NotNull
+    Optional<Category> findById(@NotNull UUID id);
 
     @BypassSoftDelete
     @Query("SELECT c FROM Category c WHERE c.user.id = :userId AND c.deletedAt IS NOT NULL ")

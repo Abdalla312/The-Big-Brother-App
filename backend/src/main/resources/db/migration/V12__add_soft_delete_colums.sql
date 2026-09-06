@@ -1,6 +1,11 @@
 ALTER TABLE users
     ADD COLUMN deleted_at TIMESTAMP;
 
+ALTER TABLE users
+    DROP CONSTRAINT users_email_key;
+
+CREATE UNIQUE INDEX users_email_key ON users (email) WHERE deleted_at IS NULL;
+
 ALTER TABLE categories
     ADD COLUMN deleted_at TIMESTAMP;
 

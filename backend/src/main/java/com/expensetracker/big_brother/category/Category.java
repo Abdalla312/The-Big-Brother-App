@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.SQLDelete;
 
 //   - `id` (UUID, Primary Key)
@@ -26,6 +27,7 @@ import org.hibernate.annotations.SQLDelete;
 @NoArgsConstructor
 @AllArgsConstructor
 @SQLDelete(sql = "UPDATE categories SET deleted_at = CURRENT_TIMESTAMP WHERE id=?")
+@Filter(name = "deletedFilter", condition = "deleted_at IS NULL")
 public class Category extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String name;
