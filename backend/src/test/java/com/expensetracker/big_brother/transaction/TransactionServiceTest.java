@@ -71,7 +71,7 @@ public class TransactionServiceTest {
 
     private CategoryResponse aCategoryResponse(Category c) {
         return new CategoryResponse(
-                c.getId(), c.getName(), c.getType(), "#FFFFFF", "icon", c.getUser() == null);
+                c.getId(), c.getName(), c.getType(), "#FFFFFF", "icon", c.getUser() == null, null);
     }
 
 
@@ -95,7 +95,8 @@ public class TransactionServiceTest {
                 t.getPaymentMethod(),
                 aCategoryResponse(t.getCategory()),
                 LocalDateTime.now(),
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null
         );
     }
 

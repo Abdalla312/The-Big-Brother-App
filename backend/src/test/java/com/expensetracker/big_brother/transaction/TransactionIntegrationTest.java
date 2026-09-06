@@ -7,8 +7,10 @@ import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.transaction.dto.TransactionRequest;
 import com.expensetracker.big_brother.transaction.dto.UpdateTransactionRequest;
 import com.expensetracker.big_brother.user.User;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,6 +29,7 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
     private User userB;
     private Category defaultCategory;
     private Category userACategory;
+    @Autowired private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -190,7 +193,14 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
         performDelete("/api/v1/transactions/" + transaction.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Transaction deleted successfully"));
+        entityManager.flush();
+        entityManager.clear();
+
         assertThat(transactionRepository.findById(transaction.getId())).isEmpty();
+
+        performGet("/api/v1/transactions/" + transaction.getId(), userAPrincipal)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
     }
 
     @Test

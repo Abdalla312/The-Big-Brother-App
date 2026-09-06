@@ -7,8 +7,10 @@ import com.expensetracker.big_brother.category.Category;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.user.User;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,6 +26,7 @@ public class BudgetIntegrationTest extends BaseIntegrationTest {
     private CustomUserDetails userAPrincipal;
     private User userA;
     private User userB;
+    @Autowired private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -290,6 +293,10 @@ public class BudgetIntegrationTest extends BaseIntegrationTest {
         performDelete("/api/v1/budget/" + budget.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Budget deleted"));
+
+        entityManager.flush();
+        entityManager.clear();
+
         assertThat(budgetRepository.findById(budget.getId())).isEmpty();
     }
 

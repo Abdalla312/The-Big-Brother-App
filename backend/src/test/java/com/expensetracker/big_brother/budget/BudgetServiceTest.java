@@ -75,7 +75,7 @@ public class BudgetServiceTest {
 
     private CategoryResponse aCategoryResponse(Category c) {
         return new CategoryResponse(
-                c.getId(), c.getName(), c.getType(), "#FFFFFF", "icon", c.getUser() == null);
+                c.getId(), c.getName(), c.getType(), "#FFFFFF", "icon", c.getUser() == null, null);
     }
 
     private Budget aBudget() {
@@ -91,7 +91,7 @@ public class BudgetServiceTest {
         BigDecimal remaining = b.getLimitAmount().subtract(spent);
         double percent = spent.doubleValue() / b.getLimitAmount().doubleValue() * 100.0;
         return new BudgetResponse(
-                b.getId(), aCategoryResponse(b.getCategory()), b.getMonth(), b.getLimitAmount(), spent, remaining, Math.round(percent * 100.0) / 100.0);
+                b.getId(), aCategoryResponse(b.getCategory()), b.getMonth(), b.getLimitAmount(), spent, remaining, Math.round(percent * 100.0) / 100.0, null);
     }
 
     private BudgetRequest aBudgetRequest() {
@@ -243,7 +243,7 @@ public class BudgetServiceTest {
         CategoryResponse catResponse = aCategoryResponse(newCategory);
         BigDecimal spent = BigDecimal.ZERO;
         BudgetResponse response = new BudgetResponse(
-                budgetId, catResponse, month, budget.getLimitAmount(), spent, budget.getLimitAmount(), 0.0);
+                budgetId, catResponse, month, budget.getLimitAmount(), spent, budget.getLimitAmount(), 0.0, null);
         when(budgetRepository.findById(budgetId)).thenReturn(Optional.of(budget));
         when(categoryRepository.findById(newCategoryId)).thenReturn(Optional.of(newCategory));
         when(budgetRepository.save(any(Budget.class))).thenReturn(budget);

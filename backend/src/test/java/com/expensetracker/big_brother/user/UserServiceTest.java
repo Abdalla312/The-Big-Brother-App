@@ -49,7 +49,7 @@ public class UserServiceTest {
 
     private UserResponse aUserResponse(User user) {
         return new UserResponse(
-                user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getCreatedAt());
+                user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getCreatedAt(), null);
     }
 
     @Test
@@ -77,7 +77,7 @@ public class UserServiceTest {
         User user = aUser();
         UpdateProfileRequest request = new UpdateProfileRequest("newName", null);
         UserResponse response = new UserResponse(
-                userId, "newName", user.getEmail(), user.getRole(), user.getCreatedAt());
+                userId, "newName", user.getEmail(), user.getRole(), user.getCreatedAt(), null);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userMapper.toResponse(any(User.class))).thenReturn(response);
         when(userRepository.save(any(User.class))).thenReturn(user);

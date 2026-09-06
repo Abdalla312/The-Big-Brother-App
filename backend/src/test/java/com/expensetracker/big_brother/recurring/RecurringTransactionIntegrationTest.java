@@ -8,6 +8,7 @@ import com.expensetracker.big_brother.recurring.dto.CreateRecurringTransactionRe
 import com.expensetracker.big_brother.recurring.dto.UpdateRecurringTransactionRequest;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.user.User;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +28,9 @@ public class RecurringTransactionIntegrationTest extends BaseIntegrationTest {
     private User userA, userB;
     private Category defaultCategory, userACategory, userBCategory;
     private RecurringTransaction userARule, userBRule;
+    @Autowired private RecurringTransactionRepository recurringTransactionRepository;
     @Autowired
-    private RecurringTransactionRepository recurringTransactionRepository;
+    EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -219,7 +221,13 @@ public class RecurringTransactionIntegrationTest extends BaseIntegrationTest {
         performDelete("/api/v1/recurring-transactions/" + userARule.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Deleted successfully"));
-        assertThat(recurringTransactionRepository.findById(userARule.getId())).isEmpty();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        performGet("/api/v1/recurring-transactions/" + userARule.getId(), userAPrincipal)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
     }
 
     @Test
