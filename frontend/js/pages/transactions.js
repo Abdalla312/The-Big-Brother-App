@@ -6,6 +6,7 @@ import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { getAccessToken } from '../auth.js';
 import { API_URL } from '../config.js';
+import { openTrashModal } from '../components/trash-modal.js';
 
 let currentMonth = getCurrentMonth();
 let currentPage = 0;
@@ -32,6 +33,10 @@ async function renderPage(main, categories) {
         <button class="btn btn-secondary" id="export-csv-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export CSV
+        </button>
+        <button class="btn btn-secondary" id="trash-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Trash
         </button>
         <button class="btn btn-primary" id="add-transaction-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -68,6 +73,7 @@ async function renderPage(main, categories) {
 
   document.getElementById('add-transaction-btn').addEventListener('click', () => openTransactionModal(categories));
   document.getElementById('export-csv-btn').addEventListener('click', () => downloadCsv());
+  document.getElementById('trash-btn').addEventListener('click', () => openTrashTransactions(categories));
   document.getElementById('filter-month').addEventListener('change', (e) => { currentMonth = e.target.value; currentPage = 0; loadTransactions(categories); });
   document.getElementById('filter-type').addEventListener('change', (e) => { currentType = e.target.value; currentPage = 0; loadTransactions(categories); });
   document.getElementById('filter-category').addEventListener('change', (e) => { currentCategoryId = e.target.value; currentPage = 0; loadTransactions(categories); });
@@ -272,4 +278,30 @@ async function downloadCsv() {
   } catch {
     showToast('Failed to export transactions', 'error');
   }
+}
+
+function openTrashTransactions(categories) {
+  openTrashModal({
+    title: 'Deleted Transactions',
+    emptyMessage: 'No deleted transactions',
+    fetchTrash: (page) => api.get(`/transactions/trash?page=${page}&size=20&sort=deletedAt,desc`),
+    restoreItem: (id) => api.put(`/transactions/${id}/restore`),
+    onClose: () => loadTransactions(categories),
+    columns: [
+      { header: 'Date', key: 'transactionDate', render: (r) => `<span class="text-sm">${formatDate(r.transactionDate)}</span>` },
+      { header: 'Type', key: 'type', render: (r) => `<span class="badge ${r.type === 'INCOME' ? 'badge-income' : 'badge-expense'}">${r.type}</span>` },
+      { header: 'Category', key: 'category', render: (r) => `
+          <div class="flex items-center gap-2">
+            <span class="color-dot" style="background-color: ${r.category?.color || '#9ca3af'}"></span>
+            <span class="text-sm">${r.category?.name || '-'}</span>
+          </div>` },
+      { header: 'Amount', key: 'amount', render: (r) => `<span class="text-sm font-semibold">${formatCurrency(r.amount)}</span>` },
+      { header: 'Payment', key: 'paymentMethod', render: (r) => `<span class="text-sm text-gray-500">${r.paymentMethod || '-'}</span>` },
+      { header: 'Deleted At', key: 'deletedAt', render: (r) => `<span class="text-sm text-gray-500">${formatDate(r.deletedAt)}</span>` },
+      { header: '', key: 'actions', render: (r) => `
+          <button class="btn btn-ghost btn-sm p-1 restore-btn text-green-600 hover:text-green-800" data-id="${r.id}" title="Restore">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/><path d="M5 18v-2a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v2"/></svg>
+          </button>` },
+    ],
+  });
 }

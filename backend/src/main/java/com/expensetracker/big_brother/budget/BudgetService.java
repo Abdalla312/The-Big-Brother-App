@@ -10,6 +10,7 @@ import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.DuplicateResourceException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.exception.ResourceOwnershipException;
+import com.expensetracker.big_brother.report.ReportService;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
@@ -37,6 +38,7 @@ public class BudgetService {
     private final BudgetMapper budgetMapper;
     private final OwnershipValidator ownershipValidator;
     private final UserRepository userRepository;
+    private final ReportService reportService;
 
     // list all budgets in a month
     @Transactional(readOnly = true)
@@ -119,5 +121,21 @@ public class BudgetService {
                 .orElseThrow(() -> new ResourceNotFoundException("Budget", budgetId));
         ownershipValidator.validateOwnership(budget.getUser().getId(), userId);
         budgetRepository.delete(budget);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BudgetResponse> getDeletedBudgets(UUID userId, Pageable pageable) {
+        Page<Budget> deletedBudgets = budgetRepository.findDeletedBudgets(userId, pageable);
+        return deletedBudgets.map(budgetMapper::toResponse);
+    }
+
+    @Transactional
+    public BudgetResponse restoreDeletedBudget(UUID userId, UUID id) {
+        Budget deletedBudget = budgetRepository.findDeletedById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Deleted Budget", id));
+        ownershipValidator.validateOwnership(deletedBudget.getUser().getId(), userId);
+        deletedBudget.setDeletedAt(null);
+        budgetRepository.save(deletedBudget);
+        return budgetMapper.toResponse(deletedBudget);
     }
 }

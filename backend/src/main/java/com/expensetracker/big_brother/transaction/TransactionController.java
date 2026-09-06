@@ -1,16 +1,19 @@
 package com.expensetracker.big_brother.transaction;
 
-import com.expensetracker.big_brother.transaction.dto.TransactionExportFilter;
 import com.expensetracker.big_brother.common.ApiResponse;
 import com.expensetracker.big_brother.common.PageResponse;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.security.CustomUserDetails;
+import com.expensetracker.big_brother.transaction.dto.TransactionExportFilter;
 import com.expensetracker.big_brother.transaction.dto.TransactionRequest;
 import com.expensetracker.big_brother.transaction.dto.TransactionResponse;
 import com.expensetracker.big_brother.transaction.dto.UpdateTransactionRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,4 +100,19 @@ public class TransactionController {
         transactionService.deleteTransaction(id, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(null, "Transaction deleted successfully"));
     }
+
+    @GetMapping("/trash")
+    public ResponseEntity<ApiResponse<PageResponse<TransactionResponse>>> getTransactionsTrash(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PageableDefault(size = 20, sort = "deletedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.from(
+                transactionService.getTransactionsTrash(user.getUserId(), pageable)), "Transaction trash retrieved"));
+
+    }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<TransactionResponse>> restoreTransaction(@AuthenticationPrincipal CustomUserDetails user, @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(transactionService.restoreTransaction(user.getUserId(), id), "Transaction restored"));
+    }
+
 }

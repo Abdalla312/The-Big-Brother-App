@@ -6,8 +6,10 @@ import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.user.User;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,6 +26,9 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
     private CustomUserDetails userAPrincipal;
     private User userA;
     private User userB;
+
+    @Autowired
+    EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -46,36 +51,36 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.content[0].name").value("Salary (User A)"));
     }
     @Test
-    void getCategories_typeUser_ReturnsOnlyUserCategories() throws Exception{
+    void getCategories_typeIncome_ReturnsOnlyUsersIncomeCategories() throws Exception{
         seedCategory("Food (Default)", TransactionType.EXPENSE, null);
         seedCategory("Salary (User A)", TransactionType.INCOME, userA);
         seedCategory("Business (User B)", TransactionType.INCOME, userB);
-        performGet("/api/v1/categories?type=user", userAPrincipal)
+        performGet("/api/v1/categories?type=INCOME", userAPrincipal)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content", hasSize(1)))
                 .andExpect(jsonPath("$.data.content[0].name").value("Salary (User A)"));
     }
 
     @Test
-    void getCategories_typeDefault_ReturnsOnlyDefaultCategories() throws Exception{
+    void getCategories_DefaultCategoriesTrue_ReturnsOnlyDefaultCategories() throws Exception{
         seedCategory("Food (Default)", TransactionType.EXPENSE, null);
         seedCategory("Salary (User A)", TransactionType.INCOME, userA);
         seedCategory("Business (User B)", TransactionType.INCOME, userB);
-        performGet("/api/v1/categories?type=default", userAPrincipal)
+        performGet("/api/v1/categories?defaultCategories=true", userAPrincipal)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content", hasSize(1)))
                 .andExpect(jsonPath("$.data.content[0].name").value("Food (Default)"));
     }
 
     @Test
-    void getCategories_typeAll_ReturnsBoth() throws Exception{
+    void getCategories_TypeExpense_Returns200() throws Exception{
         seedCategory("Food (Default)", TransactionType.EXPENSE, null);
         seedCategory("Salary (User A)", TransactionType.INCOME, userA);
-        seedCategory("Business (User B)", TransactionType.INCOME, userB);
-        performGet("/api/v1/categories?type=all", userAPrincipal)
+        seedCategory("Business (User A)", TransactionType.EXPENSE, userA);
+        performGet("/api/v1/categories?type=EXPENSE", userAPrincipal)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content", hasSize(2)))
-                .andExpect(jsonPath("$.data.content[0].name").value("Food (Default)"));
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].name").value("Business (User A)"));
     }
 
     @Test
@@ -205,6 +210,10 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
         performDelete("/api/v1/categories/" + category.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Category deleted"));
+
+        entityManager.flush();
+        entityManager.clear();
+
         assertFalse(categoryRepository.existsById(category.getId()));
     }
 

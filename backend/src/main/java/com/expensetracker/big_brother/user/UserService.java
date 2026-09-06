@@ -3,6 +3,7 @@ package com.expensetracker.big_brother.user;
 import com.expensetracker.big_brother.exception.DuplicateResourceException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
+import com.expensetracker.big_brother.report.ReportService;
 import com.expensetracker.big_brother.user.dto.ChangePasswordRequest;
 import com.expensetracker.big_brother.user.dto.DeleteAccountRequest;
 import com.expensetracker.big_brother.user.dto.UpdateProfileRequest;
@@ -10,6 +11,8 @@ import com.expensetracker.big_brother.user.dto.UserResponse;
 import com.expensetracker.big_brother.verification.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +29,7 @@ public class UserService {
     private final EmailVerificationService emailVerificationService;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final ReportService reportService;
 
     @Transactional(readOnly = true)
     public UserResponse getProfile(UUID userId) {
@@ -72,6 +76,21 @@ public class UserService {
         refreshTokenService.revokeAllUserTokens(userId);
         userRepository.delete(user);
         log.info("Account deleted: {}", userId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> getDeletedUsers(Pageable pageable) {
+        Page<User> deletedUsers = userRepository.findDeletedUsers(pageable);
+        return deletedUsers.map(userMapper::toResponse);
+    }
+
+    @Transactional
+    public UserResponse restoreDeletedUser(UUID id) {
+        User deletedUser = userRepository.findDeletedById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Deleted user", id));
+        deletedUser.setDeletedAt(null);
+        userRepository.save(deletedUser);
+        return userMapper.toResponse(deletedUser);
     }
 
 }

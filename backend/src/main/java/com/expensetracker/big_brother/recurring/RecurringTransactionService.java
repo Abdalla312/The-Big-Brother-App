@@ -112,4 +112,20 @@ public class RecurringTransactionService {
         recurringTransactionRepository.delete(recurringTransaction);
     }
 
+    @Transactional(readOnly = true)
+    public Page<RecurringTransactionResponse> getDeletedRecurringTransactions(UUID userId, Pageable pageable) {
+        Page<RecurringTransaction> deletedRules = recurringTransactionRepository.findDeletedRecurringTransactions(userId, pageable);
+        return deletedRules.map(recurringTransactionMapper::toDto);
+    }
+
+    @Transactional
+    public RecurringTransactionResponse restoreDeletedRule(UUID userId, UUID id) {
+        RecurringTransaction deletedRule = recurringTransactionRepository.findDeletedById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Deleted recurring transaction", id));
+        ownershipValidator.validateOwnership(deletedRule.getUser().getId(), userId);
+
+        deletedRule.setDeletedAt(null);
+        recurringTransactionRepository.save(deletedRule);
+        return recurringTransactionMapper.toDto(deletedRule);
+    }
 }
