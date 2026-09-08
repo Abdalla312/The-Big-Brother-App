@@ -78,6 +78,16 @@ public abstract class BaseIntegrationTest {
         return mockMvc.perform(requestBuilder);
     }
 
+    protected ResultActions performPut(String url, CustomUserDetails principal, Object body) throws Exception {
+        var requestBuilder = put(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body));
+        if (principal != null) {
+            requestBuilder.with(user(principal));
+        }
+        return mockMvc.perform(requestBuilder);
+    }
+
     protected ResultActions performPatch(String url, CustomUserDetails principal, Object body) throws Exception {
         var requestBuilder = patch(url)
                 .contentType(MediaType.APPLICATION_JSON)

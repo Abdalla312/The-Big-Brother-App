@@ -15,9 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -242,5 +242,50 @@ public class RecurringTransactionIntegrationTest extends BaseIntegrationTest {
         performDelete("/api/v1/recurring-transactions/" + userBRule.getId(), userAPrincipal, null)
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("You do not have permission to access this resource"));
+    }
+
+    @Test
+    void getDeletedRules_RetrieveSoftDeletedRecurringTransactions_Returns200() throws Exception {
+        userARule.setDeletedAt(LocalDateTime.now());
+        performGet("/api/v1/recurring-transactions/trash", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].deletedAt").isNotEmpty());
+    }
+
+    @Test
+    void getDeletedRules_Unauthorized_Returns401() throws Exception {
+        performGet("/api/v1/recurring-transactions/trash", null)
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void restoreDeletedRule_OwnDeletedRule_Returns200AndRestores() throws Exception {
+        userARule.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/recurring-transactions/" + userARule.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deletedAt").value(nullValue()));
+    }
+
+    @Test
+    void restoreDeletedRule_NonExistentRule_Returns404() throws Exception {
+        performPut("/api/v1/recurring-transactions/" + UUID.randomUUID() + "/restore", userAPrincipal, null)
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void restoreDeletedRule_OtherUsersRule_Returns403() throws Exception {
+        userBRule.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/recurring-transactions/" + userBRule.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getAll_ExcludesSoftDeletedByDefault() throws Exception {
+        seedRecurringTransaction(new BigDecimal("200"), LocalDate.now(), RecurrenceFrequency.MONTHLY, TransactionType.EXPENSE, userA, userACategory, true);
+        userARule.setDeletedAt(LocalDateTime.now());
+        performGet("/api/v1/recurring-transactions", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)));
     }
 }
