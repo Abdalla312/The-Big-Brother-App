@@ -1,7 +1,7 @@
 ﻿# Big Brother 💰
 
-[![Latest Release](https://img.shields.io/github/v/release/Abdalla312/The-Big-Brother-App?display_name=tag&sort=semver)](https://github.com/Abdalla312/The-Big-Brother-App/releases)
-[![License](https://img.shields.io/github/license/Abdalla312/The-Big-Brother-App)](LICENSE)
+[![Latest Release](https://shields.io)](https://github.com/Abdalla312/The-Big-Brother-App/releases)
+[![License](https://shields.io)](LICENSE)
 
 A **personal expense tracking REST API** built with Spring Boot 3.5 and Java 21. Track your income and expenses, set
 category budgets, and monitor your spending — all with JWT-authenticated, multi-user support.
@@ -24,51 +24,54 @@ category budgets, and monitor your spending — all with JWT-authenticated, mult
 - **Rate limiting** — Token-bucket algorithm protecting endpoints (configurable capacity, refill rate)
 - **Refresh tokens** — Secure token rotation with versioned refresh tokens
 - **Reports & analytics** — Category breakdowns, payment-method breakdowns, monthly trends, and summaries
-- **Database migrations** — Flyway manages schema versioning (11 migrations)
+- **Database migrations** — Flyway manages schema versioning (12 migrations)
 - **Comprehensive testing** — Unit + integration tests with Testcontainers PostgreSQL
+- **Soft-Delete** — Soft-Delete mechanism with applied filter to transactions, categories, budgets, recurring
+  transactions, and
+  users with restore functionality and cron job clean up after 30-days from deletion
 - **Frontend** — Static HTML/JS client for development and testing; a React Native mobile app is planned as the primary client
 
 ---
 
 ## Tech Stack
 
-| Layer          | Technology                                 |
-|----------------|--------------------------------------------|
-| **Language**   | Java 21                                    |
-| **Framework**  | Spring Boot 3.5.14                         |
-| **Build**      | Maven (wrapper included)                   |
-| **Database**   | PostgreSQL (Flyway migrations)             |
-| **ORM**        | Spring Data JPA + Hibernate                |
-| **Security**   | Spring Security, JWT (jjwt 0.12.7), BCrypt |
-| **Mappings**   | MapStruct 1.6.3                            |
-| **Validation** | Jakarta Bean Validation                    |
-| **Mail**       | Spring Mail (SMTP)                         |
-| **Docs**       | SpringDoc OpenAPI 2.8.5                    |
-| **Monitoring** | Spring Boot Actuator                       |
-| **Tests**      | JUnit 5, Spring Boot Test, Testcontainers PostgreSQL |
+| Layer          | Technology                                              |
+|----------------|---------------------------------------------------------|
+| **Language**   | Java 21                                                 |
+| **Framework**  | Spring Boot 3.5.14                                      |
+| **Build**      | Maven (wrapper included)                                |
+| **Database**   | PostgreSQL (Flyway migrations)                          |
+| **ORM**        | Spring Data JPA + Hibernate                             |
+| **Security**   | Spring Security, JWT (jjwt 0.12.7), BCrypt              |
+| **Mappings**   | MapStruct 1.6.3                                         |
+| **Validation** | Jakarta Bean Validation                                 |
+| **Mail**       | Spring Mail (SMTP)                                      |
+| **Docs**       | SpringDoc OpenAPI 3.0.3                                 |
+| **Monitoring** | Spring Boot Actuator                                    |
+| **Tests**      | JUnit 5, Spring Boot Test, Testcontainers PostgreSQL    |
 | **Infra**      | Docker, Docker Compose, GitHub Actions, AWS ECS Fargate |
 
 ---
 
 ## Architecture Decisions
 
-| Decision | Why |
-|---|---|
+| Decision                                               | Why                                                                                                                                                                         |
+|--------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Feature-based packages (`auth/`, `transaction/`, etc.) | Each feature is self-contained. When you open a package, you see everything about that feature in one place. Scales better than layer-based separation for large codebases. |
-| UUID primary keys | Sequential IDs leak information (user count, creation order). UUIDs are safer and portfolio-impressive. |
-| `BigDecimal` for money | Floating-point math causes rounding errors. `BigDecimal` is exact — this is a real interview question. |
-| Flyway migrations over `ddl-auto` | Versioned, repeatable migrations. Every production app uses migration tools. `ddl-auto` caused issues in prior projects. |
-| DTOs separate from entities | Different validation rules, different fields exposed. Prevents data leaks. Entities represent DB state; DTOs represent user input. |
-| Stateless JWT auth | Mobile apps don't use cookies. JWT in headers is the standard pattern for mobile backends. |
-| MapStruct for DTO mapping | Compile-time-safe mapping. No runtime reflection overhead. |
-| Jakarta Bean Validation on DTOs | Validation rules live close to the input layer. Keeps entities clean and focused on persistence. |
-| `@Transactional(readOnly = true)` on read methods | Reduces transaction overhead on queries. Hibernate optimizes read-only sessions. |
-| Testcontainers PostgreSQL for tests | Integration tests exercise the same database family used in development and production. |
-| Consistent `ApiResponse` wrapper | Frontend has one error-handling pattern for all endpoints. No guessing the response shape. |
-| Pagination on all list endpoints | A user with thousands of transactions can't load all at once on mobile. Standard page sizes (20–50). |
-| Token-bucket rate limiting (custom) | No external dependency. Protects auth endpoints from brute-force. Configurable capacity and refill rate. |
-| Refresh token rotation | Each refresh revokes the old token. Prevents replay attacks. Bulk revocation on password change or account deletion. |
-| Multi-stage Docker build | Final image is ~200MB not ~800MB. No build tools in production. |
+| UUID primary keys                                      | Sequential IDs leak information (user count, creation order). UUIDs are safer and portfolio-impressive.                                                                     |
+| `BigDecimal` for money                                 | Floating-point math causes rounding errors. `BigDecimal` is exact — this is a real interview question.                                                                      |
+| Flyway migrations over `ddl-auto`                      | Versioned, repeatable migrations. Every production app uses migration tools. `ddl-auto` caused issues in prior projects.                                                    |
+| DTOs separate from entities                            | Different validation rules, different fields exposed. Prevents data leaks. Entities represent DB state; DTOs represent user input.                                          |
+| Stateless JWT auth                                     | Mobile apps don't use cookies. JWT in headers is the standard pattern for mobile backends.                                                                                  |
+| MapStruct for DTO mapping                              | Compile-time-safe mapping. No runtime reflection overhead.                                                                                                                  |
+| Jakarta Bean Validation on DTOs                        | Validation rules live close to the input layer. Keeps entities clean and focused on persistence.                                                                            |
+| `@Transactional(readOnly = true)` on read methods      | Reduces transaction overhead on queries. Hibernate optimizes read-only sessions.                                                                                            |
+| Testcontainers PostgreSQL for tests                    | Integration tests exercise the same database family used in development and production.                                                                                     |
+| Consistent `ApiResponse` wrapper                       | Frontend has one error-handling pattern for all endpoints. No guessing the response shape.                                                                                  |
+| Pagination on all list endpoints                       | A user with thousands of transactions can't load all at once on mobile. Standard page sizes (20–50).                                                                        |
+| Token-bucket rate limiting (custom)                    | No external dependency. Protects auth endpoints from brute-force. Configurable capacity and refill rate.                                                                    |
+| Refresh token rotation                                 | Each refresh revokes the old token. Prevents replay attacks. Bulk revocation on password change or account deletion.                                                        |
+| Multi-stage Docker build                               | Final image is ~200MB not ~800MB. No build tools in production.                                                                                                             |
 
 ---
 
@@ -94,7 +97,7 @@ CREATE USER big_bro WITH PASSWORD 'big_bro';
 ALTER ROLE big_bro SET client_encoding TO 'utf8';
 ALTER ROLE big_bro SET default_transaction_isolation TO 'read committed';
 ALTER ROLE big_bro SET timezone TO 'Africa/Cairo';
-GRANT ALL PRIVILEGES ON DATABASE big_bro TO big_bro;
+GRANT ALL PRIVILEGES ON DATABASE big_brother TO big_bro;
 \q
 ```
 
@@ -177,49 +180,57 @@ All endpoints are prefixed with `/api/v1`. Most require a `Authorization: Bearer
 
 ### Password Reset
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | /api/v1/auth/forgot-password | No | Request a password reset email |
-| POST | /api/v1/auth/reset-password | No | Reset password with a valid token |
+| Method | Path                           | Auth | Description                       |
+|--------|--------------------------------|------|-----------------------------------|
+| POST   | `/api/v1/auth/forgot-password` | No   | Request a password reset email    |
+| POST   | `/api/v1/auth/reset-password`  | No   | Reset password with a valid token |
 
 ### Categories
 
-| Method | Path                      | Auth | Description                                |
-|--------|---------------------------|------|--------------------------------------------|
-| GET    | `/api/v1/categories`      | Yes  | List categories (paginated); `type`: `all\|user\|default` |
-| POST   | `/api/v1/categories`      | Yes  | Create custom category                     |
-| PATCH  | `/api/v1/categories/{id}` | Yes  | Update custom category                     |
-| DELETE | `/api/v1/categories/{id}` | Yes  | Delete custom category (fails 409 if used) |
+| Method | Path                              | Auth | Description                                                                                |
+|--------|-----------------------------------|------|--------------------------------------------------------------------------------------------|
+| GET    | `/api/v1/categories`              | Yes  | List categories (paginated); `type`: `INCOME\|EXPENSE`, `defaultCategories`: `true\|false` |
+| POST   | `/api/v1/categories`              | Yes  | Create custom category                                                                     |
+| PATCH  | `/api/v1/categories/{id}`         | Yes  | Update custom category                                                                     |
+| DELETE | `/api/v1/categories/{id}`         | Yes  | Delete custom category (fails 409 if used)                                                 |
+| GET    | `/api/v1/categories/trash`        | Yes  | List Soft-deleted categories (paginated)                                                   |
+| PUT    | `/api/v1/categories/{id}/restore` | Yes  | Restore Soft-deleted category                                                              |  
 
 ### Transactions
 
-| Method | Path                        | Auth | Description                                          |
-|--------|-----------------------------|------|------------------------------------------------------|
-| GET    | `/api/v1/transactions`      | Yes  | List with filters (month, categoryId, type, page, size) |
-| GET    | `/api/v1/transactions/{id}` | Yes  | Get single transaction                                  |
-| POST   | `/api/v1/transactions`      | Yes  | Create transaction                                      |
-| PATCH  | `/api/v1/transactions/{id}` | Yes  | Update transaction                                      |
-| DELETE | `/api/v1/transactions/{id}` | Yes  | Delete transaction                                      |
-| GET    | `/api/v1/transactions/export` | Yes | Export transactions as CSV                           |
+| Method | Path                                | Auth | Description                                             |
+|--------|-------------------------------------|------|---------------------------------------------------------|
+| GET    | `/api/v1/transactions`              | Yes  | List with filters (month, categoryId, type, page, size) |
+| GET    | `/api/v1/transactions/{id}`         | Yes  | Get single transaction                                  |
+| POST   | `/api/v1/transactions`              | Yes  | Create transaction                                      |
+| PATCH  | `/api/v1/transactions/{id}`         | Yes  | Update transaction                                      |
+| DELETE | `/api/v1/transactions/{id}`         | Yes  | Delete transaction                                      |
+| GET    | `/api/v1/transactions/export`       | Yes  | Export transactions as CSV                              |
+| GET    | `/api/v1/transactions/trash`        | Yes  | List Soft-deleted transactions (paginated)              |
+| PUT    | `/api/v1/transactions/{id}/restore` | Yes  | Restore Soft-deleted transactoin                        |  
 
 ### Recurring Transactions
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/v1/recurring-transactions` | Yes | List recurring transactions |
-| POST | `/api/v1/recurring-transactions` | Yes | Create recurring transaction |
-| PATCH | `/api/v1/recurring-transactions/{id}` | Yes | Update recurring transaction |
-| DELETE | `/api/v1/recurring-transactions/{id}` | Yes | Delete recurring transaction |
-| PATCH | `/api/v1/recurring-transactions/{id}/toggle` | Yes | Pause or resume recurring transaction |
+| Method | Path                                         | Auth | Description                                           |
+|--------|----------------------------------------------|------|-------------------------------------------------------|
+| GET    | `/api/v1/recurring-transactions`             | Yes  | List recurring transactions                           |
+| POST   | `/api/v1/recurring-transactions`             | Yes  | Create recurring transaction                          |
+| PATCH  | `/api/v1/recurring-transactions/{id}`        | Yes  | Update recurring transaction                          |
+| DELETE | `/api/v1/recurring-transactions/{id}`        | Yes  | Delete recurring transaction                          |
+| PATCH  | `/api/v1/recurring-transactions/{id}/toggle` | Yes  | Pause or resume recurring transaction                 |
+| GET    | `/api/v1/recurring-transactions/trash`       | Yes  | List Soft-deleted recurrring transactions (paginated) |
+| PUT    | `/api/v1/recurring-transctions/{id}/restore` | Yes  | Restore Soft-deleted recurring transactions           |  
 
 ### Budgets
 
-| Method | Path                           | Auth | Description                               |
-|--------|--------------------------------|------|-------------------------------------------|
+| Method | Path                           | Auth | Description                                              |
+|--------|--------------------------------|------|----------------------------------------------------------|
 | GET    | `/api/v1/budget?month=yyyy-MM` | Yes  | List budgets with pagination and spent/remaining/percent |
-| POST   | `/api/v1/budget`               | Yes  | Create budget                             |
-| PATCH  | `/api/v1/budget/{id}`          | Yes  | Update budget                             |
-| DELETE | `/api/v1/budget/{id}`          | Yes  | Delete budget                             |
+| POST   | `/api/v1/budget`               | Yes  | Create budget                                            |
+| PATCH  | `/api/v1/budget/{id}`          | Yes  | Update budget                                            |
+| DELETE | `/api/v1/budget/{id}`          | Yes  | Delete budget                                            |
+| GET    | `/api/v1/budget/trash`         | Yes  | List Soft-deleted budget (paginated)                     |
+| PUT    | `/api/v1/budget/{id}/restore`  | Yes  | Restore Soft-deleted budget                              |  
 
 ### Users
 
@@ -307,6 +318,7 @@ Big_Brother/
 │   │   │   │   ├── refreshtoken/   # Refresh-token persistence
 │   │   │   │   ├── report/         # Reports & analytics
 │   │   │   │   ├── security/       # JWT filter, security config
+|   |   |   |   ├── scheduled/      # Scheduled cron jobs like cleaning soft-deleted items
 │   │   │   │   ├── transaction/    # Transaction CRUD + specs
 │   │   │   │   ├── user/           # User profile management
 │   │   │   │   └── verification/   # Email verification tokens
@@ -314,7 +326,7 @@ Big_Brother/
 │   │   │       ├── application.yml
 │   │   │       ├── application-dev.yml
 │   │   │       ├── application-prod.yml
-│   │   │       └── db/migration/   # Flyway migrations (V1-V11)
+│   │   │       └── db/migration/   # Flyway migrations (V1-V12)
 │   │   └── test/
 │   ├── Dockerfile
 │   ├── pom.xml
@@ -322,7 +334,7 @@ Big_Brother/
 │   ├── api-docs.json               # Full OpenAPI 3.1 spec
 │   └── railway.json
 ├── frontend/                        # Static development/testing client
-├── backend/docker-compose.yml      # PostgreSQL + Mailhog for local dev
+├── backend/docker-compose.yml      # PostgreSQL for local dev
 └── .gitignore
 ```
 
@@ -332,17 +344,19 @@ Big_Brother/
 
 11 Flyway migrations create these tables:
 
-| Table | Key columns | Notes |
-|---|---|---|
-| `users` | id (UUID), name, email, password_hash, role, user_verified, pending_email, token_version | Unique email; token version invalidates older access tokens |
-| `categories` | id (UUID), name, type, color, icon, user_id | A null `user_id` identifies a system-default category |
-| `transactions` | id (UUID), type, amount, transaction_date, note, payment_method, user_id, category_id | Owned by a user and linked to a category |
-| `budgets` | id (UUID), month (YYYY-MM), limit_amount, user_id, category_id | Unique on `(user_id, category_id, month)` |
-| `email_verification_token` | id, token_hash, user_id, expires_at, token_type | Supports email verification, email change, and password reset tokens; unique per user and type |
-| `refresh_token` | id, token_hash, user_id, expires_at, revoked, token_version | Hashed, revocable refresh-token persistence |
-| `recurring_transactions` | id, user_id, category_id, type, amount, frequency, next_execution_date, is_active | Scheduled recurring entries with pause/resume support |
+| Table                      | Key columns                                                                                          | Notes                                                                                          |
+|----------------------------|------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| `users`                    | id (UUID), name, email, password_hash, role, user_verified, pending_email, token_version, deleted_at | Unique email where deleted_at is null; token version invalidates older access tokens           |
+| `categories`               | id (UUID), name, type, color, icon, user_id, deleted_at                                              | A null `user_id` identifies a system-default category                                          |
+| `transactions`             | id (UUID), type, amount, transaction_date, note, payment_method, user_id, category_id, deleted_at    | Owned by a user and linked to a category                                                       |
+| `budgets`                  | id (UUID), month (YYYY-MM), limit_amount, user_id, category_id, deleted_at                           | Unique on `(user_id, category_id, month)`                                                      |
+| `email_verification_token` | id, token_hash, user_id, expires_at, token_type                                                      | Supports email verification, email change, and password reset tokens; unique per user and type |
+| `refresh_token`            | id, token_hash, user_id, expires_at, revoked, token_version, deleted_at                              | Hashed, revocable refresh-token persistence                                                    |
+| `recurring_transactions`   | id, user_id, category_id, type, amount, frequency, next_execution_date, is_active, deleted_at        | Scheduled recurring entries with pause/resume support                                          |
 
-Migration highlights: V8 adds pending email support, V9 adds token versioning and refresh tokens, V10 adds token types and password-reset constraints, and V11 adds recurring transactions.
+Migration highlights: V8 adds pending email support, V9 adds token versioning and refresh tokens, V10 adds token types
+and password-reset constraints, V11 adds recurring transactions, and V12 adds deleted_at column to (users, transactions,
+budgets, categories, and recurring transactions) tables.
 
 **Default categories** (seed migration V6): Food & Dining, Transportation, Housing, Utilities (expenses) + Salary,
 Investments (income).
@@ -356,8 +370,10 @@ erDiagram
     USERS ||--o{ BUDGETS : "sets"
     USERS ||--o{ EMAIL_VERIFICATION_TOKENS : "has"
     USERS ||--o{ REFRESH_TOKENS : "has"
+    USERS ||--o{ RECURRING_TRANSACTIONS : "has"
     CATEGORIES ||--o{ TRANSACTIONS : "categorizes"
     CATEGORIES ||--o{ BUDGETS : "budgeted"
+    CATEGORIES ||--o{ RECURRING_TRANSACTIONS : "categorizes"
 ```
 
 ### System Architecture Diagram
@@ -374,7 +390,6 @@ graph TB
         API["Spring Boot API - ECS Fargate"]
         DB[("PostgreSQL 17 - RDS")]
         CACHE[("ElastiCache Redis")]
-        SES["AWS SES / Mailgun - Transactional Email"]
     end
 
     M -->|HTTPS| LB
@@ -382,7 +397,6 @@ graph TB
     LB --> API
     API --> DB
     API --> CACHE
-    API --> SES
 ```
 
 ---
@@ -398,34 +412,34 @@ graph TB
 
 ### Key Environment Variables
 
-| Variable                     | Default       | Description                       |
-|------------------------------|---------------|-----------------------------------|
-| `SPRING_PROFILES_ACTIVE`     | `dev`         | Active profile                    |
-| `DB_URL`                     | —             | PostgreSQL JDBC URL               |
-| `DB_SCHEMA`                  | `public`      | Database schema                   |
-| `DB_USERNAME`                | —             | Database user                     |
-| `DB_PASSWORD`                | —             | Database password                 |
-| `JWT_SECRET`                 | —             | Base64-encoded HMAC-SHA key       |
-| `JWT_ACCESS_TOKEN_EXPIRY_MS` | `900000`      | Access token expiry in ms (15 min)|
-| `JWT_REFRESH_TOKEN_EXPIRY_DAYS` | `30`      | Refresh token expiry in days      |
-| `DB_POOL_SIZE`               | `10`          | HikariCP maximum pool size        |
-| `MAIL_HOST`                  | —             | SMTP host                         |
-| `MAIL_PORT`                  | —             | SMTP port                         |
-| `MAIL_USERNAME`              | —             | SMTP username                     |
-| `MAIL_PASSWORD`              | —             | SMTP password/app password        |
-| `APP_BACKEND_URL`            | —             | Public URL for verification links |
+| Variable                        | Default  | Description                        |
+|---------------------------------|----------|------------------------------------|
+| `SPRING_PROFILES_ACTIVE`        | `dev`    | Active profile                     |
+| `DB_URL`                        | —        | PostgreSQL JDBC URL                |
+| `DB_SCHEMA`                     | `public` | Database schema                    |
+| `DB_USERNAME`                   | —        | Database user                      |
+| `DB_PASSWORD`                   | —        | Database password                  |
+| `JWT_SECRET`                    | —        | Base64-encoded HMAC-SHA key        |
+| `JWT_ACCESS_TOKEN_EXPIRY_MS`    | `900000` | Access token expiry in ms (15 min) |
+| `JWT_REFRESH_TOKEN_EXPIRY_DAYS` | `30`     | Refresh token expiry in days       |
+| `DB_POOL_SIZE`                  | `10`     | HikariCP maximum pool size         |
+| `MAIL_HOST`                     | —        | SMTP host                          |
+| `MAIL_PORT`                     | —        | SMTP port                          |
+| `MAIL_USERNAME`                 | —        | SMTP username                      |
+| `MAIL_PASSWORD`                 | —        | SMTP password/app password         |
+| `APP_BACKEND_URL`               | —        | Public URL for verification links  |
 
 ### Database Configuration
 
-| Setting | Value | Description |
-|---------|-------|-------------|
-| `spring.jpa.hibernate.ddl-auto` | `validate` | Schema managed by Flyway — Hibernate only validates |
-| `spring.jpa.open-in-view` | `false` | Prevents lazy loading in views |
-| `spring.flyway.enabled` | `true` | Flyway migration enabled |
-| `spring.flyway.baseline-on-migrate` | `true` | Baselines existing databases |
-| `spring.flyway.validate-on-migrate` | `true` | Validates migrations on startup |
-| `spring.datasource.hikari.maximum-pool-size` | `10` (configurable via `DB_POOL_SIZE`) | Connection pool max |
-| `spring.datasource.hikari.minimum-idle` | `2` | Minimum idle connections |
+| Setting                                      | Value                                  | Description                                         |
+|----------------------------------------------|----------------------------------------|-----------------------------------------------------|
+| `spring.jpa.hibernate.ddl-auto`              | `validate`                             | Schema managed by Flyway — Hibernate only validates |
+| `spring.jpa.open-in-view`                    | `false`                                | Prevents lazy loading in views                      |
+| `spring.flyway.enabled`                      | `true`                                 | Flyway migration enabled                            |
+| `spring.flyway.baseline-on-migrate`          | `true`                                 | Baselines existing databases                        |
+| `spring.flyway.validate-on-migrate`          | `true`                                 | Validates migrations on startup                     |
+| `spring.datasource.hikari.maximum-pool-size` | `10` (configurable via `DB_POOL_SIZE`) | Connection pool max                                 |
+| `spring.datasource.hikari.minimum-idle`      | `2`                                    | Minimum idle connections                            |
 
 **Test profile** (`src/test/resources/application.yml`) uses Testcontainers PostgreSQL, so integration tests run against a real PostgreSQL-compatible database.
 
@@ -472,7 +486,7 @@ or Swagger UI for interactive exploration.
 - Pagination for categories and budgets
 - Rate limiting on auth endpoints
 - JWT refresh token rotation and revocation
-- Docker Compose with PostgreSQL and Mailhog
+- Docker Compose with PostgreSQL
 - AWS ECS deployment workflow
 
 **Planned or in progress:**

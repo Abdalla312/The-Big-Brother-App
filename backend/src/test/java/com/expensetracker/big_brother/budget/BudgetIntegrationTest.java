@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.UUID;
 
@@ -327,5 +328,72 @@ public class BudgetIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"))
                 .andExpect(jsonPath("$.message").value("Full authentication is required to access this resource"));
+    }
+
+    @Test
+    void getDeletedBudgets_ReturnsSoftDeletedBudgets() throws Exception {
+        Category category = seedCategory("Food", TransactionType.EXPENSE, userA);
+        Budget budget = seedBudget(userA, category, YearMonth.now().toString(), new BigDecimal("500.0"));
+        performDelete("/api/v1/budget/" + budget.getId(), userAPrincipal, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Budget deleted"));
+
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(budgetRepository.findById(budget.getId()).isEmpty());
+
+        performGet("/api/v1/budget/trash", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].deletedAt").isNotEmpty());
+    }
+
+    @Test
+    void getDeletedBudgets_Unauthorized_Returns401() throws Exception {
+        performGet("/api/v1/budget/trash", null)
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void restoreDeletedBudget_OwnDeletedBudget_Returns200AndRestores() throws Exception {
+        Category category = seedCategory("Food", TransactionType.EXPENSE, userA);
+        Budget budget = seedBudget(userA, category, YearMonth.now().toString(), new BigDecimal("500.0"));
+        budget.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/budget/" + budget.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deletedAt").value(nullValue()));
+    }
+
+    @Test
+    void restoreDeletedBudget_NonExistentBudget_Returns404() throws Exception {
+        performPut("/api/v1/budget/" + UUID.randomUUID() + "/restore", userAPrincipal, null)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
+    }
+
+    @Test
+    void restoreDeletedBudget_OtherUsersBudget_Returns403() throws Exception {
+        Category category = seedCategory("Food", TransactionType.EXPENSE, userB);
+        Budget budget = seedBudget(userB, category, YearMonth.now().toString(), new BigDecimal("500.0"));
+        budget.setDeletedAt(LocalDateTime.now());
+
+        performPut("/api/v1/budget/" + budget.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("FORBIDDEN"));
+    }
+
+    @Test
+    void getBudgets_ExcludesSoftDeletedByDefault() throws Exception {
+        Category categoryA = seedCategory("Food", TransactionType.EXPENSE, userA);
+        Category categoryB = seedCategory("Salary", TransactionType.INCOME, userA);
+        seedBudget(userA, categoryA, YearMonth.now().toString(), new BigDecimal("500.0"));
+        Budget budgetB = seedBudget(userA, categoryB, YearMonth.now().toString(), new BigDecimal("500.0"));
+        budgetB.setDeletedAt(LocalDateTime.now());
+
+        performGet("/api/v1/budget?month=" + YearMonth.now(), userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)));
     }
 }

@@ -14,11 +14,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -218,5 +220,59 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("FORBIDDEN"));
 
+    }
+
+    @Test
+    void getTransactionsTrash_ReturnsSoftDeletedTransactions() throws Exception {
+        Transaction userATransaction = seedTransaction(new BigDecimal("200.0"), LocalDate.now(), userA, userACategory);
+        userATransaction.setDeletedAt(LocalDateTime.now());
+        performGet("/api/v1/transactions/trash", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].deletedAt").isNotEmpty());
+    }
+
+    @Test
+    void getTransactionsTrash_Unauthorized_Returns401() throws Exception {
+        performGet("/api/v1/transactions/trash", null)
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void restoreDeletedTransaction_OwnDeletedTransaction_Returns200AndRestores() throws Exception {
+        Transaction userATransaction = seedTransaction(new BigDecimal("200.0"), LocalDate.now(), userA, userACategory);
+        userATransaction.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/transactions/" + userATransaction.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deletedAt").value(nullValue()));
+    }
+
+    @Test
+    void restoreDeletedTransaction_OtherUsersTransaction_Returns403() throws Exception {
+        Category userBCategory = seedCategory("Rent", TransactionType.EXPENSE, userB);
+        Transaction userBTransaction = seedTransaction(new BigDecimal("200.0"), LocalDate.now(), userB, userBCategory);
+        userBTransaction.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/transactions/" + userBTransaction.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void restoreDeletedTransaction_NonExistentTransaction_Returns404() throws Exception {
+        performPut("/api/v1/transactions/" + UUID.randomUUID() + "/restore", userAPrincipal, null)
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getTransactions_ExcludesSoftDeletedByDefault() throws Exception {
+        Transaction transactionA = seedTransaction(new BigDecimal("200.0"), LocalDate.now(), userA, userACategory);
+        Transaction transactionB = seedTransaction(new BigDecimal("500.0"), LocalDate.now(), userA, userACategory);
+        transactionB.setDeletedAt(LocalDateTime.now());
+        performGet("/api/v1/transactions", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].deletedAt").value(nullValue()));
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(transactionRepository.findById(transactionB.getId())).isEmpty();
     }
 }

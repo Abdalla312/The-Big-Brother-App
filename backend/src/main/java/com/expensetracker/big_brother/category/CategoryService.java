@@ -91,6 +91,7 @@ public class CategoryService {
     public CategoryResponse restoreDeletedCategory(UUID userId, UUID id) {
         Category category = categoryRepository.findDeletedById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
+        if (category.getUser() == null) throw new ResourceOwnershipException();
         ownershipValidator.validateOwnership(category.getUser().getId(), userId);
         category.setDeletedAt(null);
         categoryRepository.save(category);
