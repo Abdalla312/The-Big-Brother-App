@@ -62,7 +62,7 @@ public class BudgetController {
     @GetMapping("/trash")
     public ResponseEntity<ApiResponse<PageResponse<BudgetResponse>>> getDeletedBudgets(
             @AuthenticationPrincipal CustomUserDetails user,
-            @PageableDefault(page = 20, sort = "deletedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "deletedAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.ok(PageResponse.from(budgetService.getDeletedBudgets(user.getUserId(), pageable)), "Budget trash retrieved"));
     }
 
