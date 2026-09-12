@@ -1,9 +1,6 @@
 package com.expensetracker.big_brother.auth;
 
-import com.expensetracker.big_brother.auth.dto.AuthResponse;
-import com.expensetracker.big_brother.auth.dto.LoginRequest;
-import com.expensetracker.big_brother.auth.dto.RegisterRequest;
-import com.expensetracker.big_brother.auth.dto.ResendVerificationRequest;
+import com.expensetracker.big_brother.auth.dto.*;
 import com.expensetracker.big_brother.refreshtoken.RefreshTokenService;
 import com.expensetracker.big_brother.user.Role;
 import com.expensetracker.big_brother.user.User;
@@ -11,6 +8,7 @@ import com.expensetracker.big_brother.user.UserRepository;
 import com.expensetracker.big_brother.verification.EmailVerificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -199,4 +197,95 @@ public class AuthServiceTest {
         authService.resendVerification(request);
     }
 
+    @Test
+    void forgotPassword_UserExists_SendsEmail() {
+        ForgotPasswordRequest request = new ForgotPasswordRequest("test@example.com");
+        User user = aVerifiedUser();
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+
+        authService.forgotPassword(request);
+
+        verify(emailVerificationService).sendPasswordResetEmail(user);
+    }
+
+    @Test
+    void forgotPassword_UserNotFound_DoesNothing() {
+        ForgotPasswordRequest request = new ForgotPasswordRequest("test@example.com");
+
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
+
+        authService.forgotPassword(request);
+
+        assertDoesNotThrow(() -> authService.forgotPassword(request));
+        verify(emailVerificationService, never()).sendPasswordResetEmail(any());
+    }
+
+    @Test
+    void forgotPassword_EmailNormalized() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
+
+        authService.forgotPassword(new ForgotPasswordRequest("Test@EXAMPLE.com"));
+        verify(userRepository).findByEmail("test@example.com");
+        verify(emailVerificationService, never()).sendPasswordResetEmail(any());
+    }
+
+    @Test
+    void resetPassword_Success() {
+        User user = aVerifiedUser();
+        user.setTokenVersion(3);
+        UUID userId = user.getId();
+        ResetPasswordRequest request = new ResetPasswordRequest("reset-token", userId, "NewPassword1");
+
+        when(emailVerificationService.verifyPasswordResetToken("reset-token", userId)).thenReturn(user);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("NewPassword1")).thenReturn("hashed-new-password");
+
+        authService.resetPassword(request);
+
+        assertThat(user.getTokenVersion()).isEqualTo(4);
+        assertThat(user.getPasswordHash()).isEqualTo("hashed-new-password");
+        verify(userRepository).save(user);
+        verify(refreshTokenService).revokeAllUserTokens(userId);
+    }
+
+    @Test
+    void resetPassword_UserNotFoundAfterVerification_ThrowsIllegalArgument() {
+        User user = aVerifiedUser();
+        user.setTokenVersion(5);
+        UUID userId = user.getId();
+        ResetPasswordRequest request = new ResetPasswordRequest("reset-token", userId, "NewPassword1");
+        when(emailVerificationService.verifyPasswordResetToken("reset-token", userId)).thenReturn(user);
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> authService.resetPassword(request));
+
+        assertThat(exception.getMessage()).isEqualTo("User not found");
+        verify(userRepository, never()).save(any());
+        verify(refreshTokenService, never()).revokeAllUserTokens(any());
+    }
+
+    @Test
+    void resetPassword_TokenVersionIncremented() {
+        User user = aVerifiedUser();
+        user.setTokenVersion(5);
+        UUID userId = user.getId();
+        ResetPasswordRequest request = new ResetPasswordRequest(
+                "reset-token", userId, "NewPassword1");
+        when(emailVerificationService.
+                verifyPasswordResetToken("reset-token", userId)).thenReturn(user);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("NewPassword1")).thenReturn("hashed");
+
+        authService.resetPassword(request);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        User saved = userCaptor.getValue();
+
+        assertThat(saved.getTokenVersion()).isEqualTo(6);
+        assertThat(saved.getPasswordHash()).isEqualTo("hashed");
+        verify(refreshTokenService).revokeAllUserTokens(userId);
+
+    }
 }
