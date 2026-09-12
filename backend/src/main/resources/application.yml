@@ -1,3 +1,4 @@
+#file: noinspection SpellCheckingInspection
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
@@ -39,6 +40,9 @@ spring:
           auth: true
           starttls:
             enable: true
+          connectiontimeout: 15000
+          timeout: 15000
+          writetimeout: 15000
 
 server:
   port: 8080
@@ -64,3 +68,13 @@ app:
     secret: ${JWT_SECRET}
     access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000}
     refresh-token-expiry-days: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:30}
+  mail:
+    from-address: ${MAIL_FROM:expense.tracker.big.brother@gmail.com}
+    from-name: ${MAIL_FROM_NAME:Big Brother Team}
+    reply-to: ${MAIL_REPLY_TO:expense.tracker.big.brother@gmail.com}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
