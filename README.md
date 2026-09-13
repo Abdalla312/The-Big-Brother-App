@@ -331,8 +331,7 @@ Big_Brother/
 │   ├── Dockerfile
 │   ├── pom.xml
 │   ├── mvnw / mvnw.cmd
-│   ├── api-docs.json               # Full OpenAPI 3.1 spec
-│   └── railway.json
+│   └── api-docs.json               # Full OpenAPI 3.1 spec
 ├── frontend/                        # Static development/testing client
 ├── backend/docker-compose.yml      # PostgreSQL for local dev
 └── .gitignore
@@ -488,10 +487,11 @@ or Swagger UI for interactive exploration.
 - JWT refresh token rotation and revocation
 - Docker Compose with PostgreSQL
 - AWS ECS deployment workflow
+- Password-reset UI in the static client and mobile app
+
 
 **Planned or in progress:**
 - React Native mobile app as the primary client
-- Password-reset UI in the static client and mobile app
 - Enhanced dashboard analytics
 - Production screenshots and a verified public demo
 
