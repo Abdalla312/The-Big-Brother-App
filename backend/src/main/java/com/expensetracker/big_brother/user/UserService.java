@@ -29,7 +29,6 @@ public class UserService {
     private final EmailVerificationService emailVerificationService;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
-    private final ReportService reportService;
 
     @Transactional(readOnly = true)
     public UserResponse getProfile(UUID userId) {
