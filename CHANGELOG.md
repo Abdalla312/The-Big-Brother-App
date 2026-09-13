@@ -13,6 +13,23 @@ Nothing yet.
 
 ---
 
+
+## [0.3.0] - 2026-09-12
+
+### Added
+- Dark-mode theme in the static client — CSS-variable-driven palettes, system preference detection
+  (`prefers-color-scheme`), and a persistent manual toggle backed by `localStorage`
+- Forgot/reset password pages in the static client wired to the password-reset API
+- Default category template picker in the new-category form (pre-fills name, type, color, icon)
+- Dependency-free static frontend dev server (`npm start`, default port 3000) with runtime `BACKEND_URL`
+  substitution and SPA fallback
+
+### Changed
+- Static client charts (dashboard and reports) now re-theme for dark mode
+- Frontend `API_URL` defaults to `http://localhost:8080` for local development
+
+---
+
 ## [0.2.1] - 2026-09-08
 
 ### Added

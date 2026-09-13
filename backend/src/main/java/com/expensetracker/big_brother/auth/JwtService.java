@@ -1,21 +1,18 @@
 package com.expensetracker.big_brother.auth;
 
-import java.util.Date;
-import java.util.function.Function;
-
-import javax.crypto.SecretKey;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import com.expensetracker.big_brother.security.CustomUserDetails;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+import java.util.function.Function;
 
 @Service
 public class JwtService {
@@ -78,12 +75,14 @@ public class JwtService {
 
     public boolean isTokenValid(String jwtToken, CustomUserDetails userDetails) {
         try {
-            String username = extractUserName(jwtToken);
-            Integer tokenVersion = extractClaims(jwtToken, c -> c.get("tokenVersion", Integer.class));
-            return username.equals(userDetails.getUsername())
+            Claims claims = extractAllClaims(jwtToken);
+            Integer tokenVersion = claims.get("tokenVersion", Integer.class);
+            Date expiration = claims.getExpiration();
+            return userDetails.getUsername().equals(claims.getSubject())
                     && tokenVersion != null
                     && tokenVersion == userDetails.getTokenVersion()
-                    && !isTokenExpired(jwtToken);
+                    && expiration != null
+                    && expiration.after(new Date());
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }

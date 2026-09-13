@@ -61,3 +61,7 @@ export function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+export function getCssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}

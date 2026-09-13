@@ -106,12 +106,7 @@ public class TransactionService {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", transactionId));
         ownershipValidator.validateOwnership(transaction.getUser().getId(), currentUserId);
-        if (request.type() != null) transaction.setType(request.type());
-        if (request.amount() != null) transaction.setAmount(request.amount());
-        if (request.transactionDate() != null) transaction.setTransactionDate(request.transactionDate());
-        if (request.note() != null) transaction.setNote(request.note());
-        if (request.paymentMethod() != null) transaction.setPaymentMethod(normalizePaymentMethod(request.paymentMethod()));
-        // category update with ownership check
+
         if (request.categoryId() != null && !transaction.getCategory().getId().equals(request.categoryId())) {
             Category newCategory = categoryRepository.findById(request.categoryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Category", request.categoryId()));
@@ -120,8 +115,9 @@ public class TransactionService {
             }
             transaction.setCategory(newCategory);
         }
-        Transaction saved = transactionRepository.save(transaction);
-        return transactionMapper.toResponse(saved);
+        return transactionMapper.toResponse(
+                transactionRepository.save(
+                        transactionMapper.partialUpdate(request, transaction)));
     }
 
     @Transactional
@@ -187,7 +183,7 @@ public class TransactionService {
         }
     }
 
-    private SqlQuery buildExportQuery(UUID userId, TransactionExportFilter filter) {
+    SqlQuery buildExportQuery(UUID userId, TransactionExportFilter filter) {
         StringBuilder sql = new StringBuilder("""
                 SELECT
                     t.transaction_date,
@@ -249,7 +245,7 @@ public class TransactionService {
         return transactionMapper.toResponse(transaction);
     }
 
-    private record SqlQuery(
+    record SqlQuery(
             String sql,
             List<Object> parameters
     ) {}

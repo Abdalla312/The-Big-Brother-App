@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { formatCurrency, getCurrentMonth, getMonthLabel, getFirstDayOfMonth, getLastDayOfMonth, formatDate } from '../utils.js';
+import { formatCurrency, getCurrentMonth, getMonthLabel, getFirstDayOfMonth, getLastDayOfMonth, formatDate, getCssVar } from '../utils.js';
 import { showLoading } from '../components/loading.js';
 
 const FREQUENCY_LABELS = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
@@ -113,6 +113,9 @@ function renderTrendChart(trend) {
     return new Date(Number(y), Number(m) - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
   });
 
+  const chartTick = getCssVar('--chart-tick');
+  const chartGrid = getCssVar('--chart-grid');
+
   new Chart(canvas, {
     type: 'line',
     data: {
@@ -144,11 +147,21 @@ function renderTrendChart(trend) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
-        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}` } },
+        legend: { position: 'top', labels: { usePointStyle: true, padding: 20, color: chartTick } },
+        tooltip: {
+          callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}` },
+        },
       },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } },
+        x: {
+          grid: { color: chartGrid },
+          ticks: { color: chartTick },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: chartGrid },
+          ticks: { color: chartTick, callback: (v) => '$' + v.toLocaleString() },
+        },
       },
     },
   });

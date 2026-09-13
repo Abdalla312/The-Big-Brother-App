@@ -11,6 +11,7 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,10 +20,8 @@ import java.time.YearMonth;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.nullValue;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 public class TransactionIntegrationTest extends BaseIntegrationTest {
 
@@ -274,5 +273,26 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
         entityManager.flush();
         entityManager.clear();
         assertThat(transactionRepository.findById(transactionB.getId())).isEmpty();
+    }
+
+    @Test
+    void exportTransactions_ReturnsCsvWithSeededRow() throws Exception {
+        seedTransaction(new BigDecimal("50.00"), LocalDate.now(), userA, userACategory);
+        entityManager.flush();
+        performGet("/api/v1/transactions/export", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/csv"))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        containsString("attachment; filename=\"transactions-")))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, endsWith(".csv\"")))
+                .andExpect(content().string(containsString("Date,Type,Category,Amount,Payment Method,Note")))
+                .andExpect(content().string(containsString("EXPENSE,Utilities,50.0")));
+    }
+
+    @Test
+    void exportTransactions_Unauthenticated_Returns401() throws Exception {
+        performGet("/api/v1/transactions/export", null)
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }
 }

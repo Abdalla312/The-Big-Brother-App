@@ -63,7 +63,7 @@ public class EmailVerificationService {
                 user.getName(),
                 verificationLink,
                 verificationExpiryHours);
-        emailService.sendHtml(user.getEmail(), "Verify your email", htmlBody);
+        emailService.sendHtmlAsync(user.getEmail(), "Verify your email", htmlBody);
     }
 
     @Transactional
@@ -88,14 +88,14 @@ public class EmailVerificationService {
                 newEmail,
                 verificationLink,
                 verificationExpiryHours);
-        emailService.sendHtml(newEmail, "Confirm your new email", htmlBody);
+        emailService.sendHtmlAsync(newEmail, "Confirm your new email", htmlBody);
         
         // Send notification to old email
         String notificationHtml = emailTemplateService.renderEmailChangeNotification(
                 currentUser.getName(),
                 newEmail,
                 verificationExpiryHours);
-        emailService.sendHtml(currentUser.getEmail(), "Email change requested", notificationHtml);
+        emailService.sendHtmlAsync(currentUser.getEmail(), "Email change requested", notificationHtml);
     }
 
     @Transactional
@@ -118,7 +118,7 @@ public class EmailVerificationService {
                 user.getName(),
                 resetLink,
                 resetExpiryMinutes);
-        emailService.sendHtml(user.getEmail(), "Reset your password", htmlBody);
+        emailService.sendHtmlAsync(user.getEmail(), "Reset your password", htmlBody);
     }
 
     @Transactional
@@ -131,6 +131,12 @@ public class EmailVerificationService {
         if (!token.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("Invalid verification token");
         }
+
+        if (token.getTokenType() != TokenType.EMAIL_VERIFICATION
+                && token.getTokenType() != TokenType.EMAIL_CHANGE){
+            throw new IllegalArgumentException("Invalid verification token");
+        }
+
         if (token.isExpired()) {
             verificationRepository.delete(token);
             throw new IllegalArgumentException("Verification token expired");

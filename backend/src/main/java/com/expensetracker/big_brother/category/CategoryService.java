@@ -34,6 +34,7 @@ public class CategoryService {
     private final TransactionRepository transactionRepository;
     private final RecurringTransactionRepository recurringTransactionRepository;
 
+    @Transactional(readOnly = true)
     public PageResponse<CategoryResponse> getAllCategories(UUID userId, TransactionType type, boolean defaultCategories, Pageable pageable) {
         Page<Category> categories = defaultCategories
                 ? categoryRepository.findDefaultCategories(type, pageable)
@@ -41,6 +42,7 @@ public class CategoryService {
         return PageResponse.from(categories.map(categoryMapper::toResponse));
     }
 
+    @Transactional
     public CategoryResponse createCategory(@Valid CreateCategoryRequest request, UUID userId) {
         Category category = categoryMapper.toEntity(request);
         User user = userRepository.findById(userId)
@@ -51,6 +53,7 @@ public class CategoryService {
         return categoryMapper.toResponse(category);
     }
 
+    @Transactional
     public CategoryResponse updateCategory(UUID categoryId, UpdateCategoryRequest request, UUID currentUserId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
@@ -68,6 +71,7 @@ public class CategoryService {
         return categoryMapper.toResponse(saved);
     }
 
+    @Transactional
     public void deleteCategory(UUID categoryId, UUID userId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category Not found"));

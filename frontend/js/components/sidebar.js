@@ -1,5 +1,6 @@
 import { getUser, getRefreshToken, logout } from '../auth.js';
 import { getCurrentPath } from '../router.js';
+import { getResolvedTheme, toggleTheme } from '../theme.js';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
@@ -43,6 +44,10 @@ export function renderSidebar() {
         `).join('')}
       </nav>
       <div class="border-t border-slate-700/50 p-4">
+        <button id="sidebar-theme" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors mb-1">
+          <i data-lucide="moon" class="h-4 w-4"></i>
+          <span class="theme-label">Dark mode</span>
+        </button>
         <div class="flex items-center gap-3 mb-3">
           <div class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/20 text-brand-300 text-sm font-semibold">
             ${user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
@@ -76,6 +81,12 @@ export function renderSidebar() {
   lucide.createIcons();
   updateActiveLink();
   applyState();
+  updateThemeButton();
+
+  document.getElementById('sidebar-theme').addEventListener('click', () => {
+    toggleTheme();
+    updateThemeButton();
+  });
 
   document.getElementById('sidebar-logout').addEventListener('click', async () => {
     try {
@@ -84,6 +95,17 @@ export function renderSidebar() {
     } catch {}
     logout();
   });
+}
+
+function updateThemeButton() {
+  const dark = getResolvedTheme() === 'dark';
+  const btn = document.getElementById('sidebar-theme');
+  if (!btn) return;
+  btn.innerHTML = `
+    <i data-lucide="${dark ? 'sun' : 'moon'}" class="h-4 w-4"></i>
+    <span class="theme-label">${dark ? 'Light mode' : 'Dark mode'}</span>
+  `;
+  lucide.createIcons();
 }
 
 export function updateActiveLink() {

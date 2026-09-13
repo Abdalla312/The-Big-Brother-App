@@ -1,7 +1,12 @@
 {
   "name": "big-brother-frontend",
   "private": true,
+  "bin": {
+    "big-brother-frontend": "./server.js"
+  },
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "start": "node server.js",
+    "dev": "node server.js"
   }
 }

@@ -8,6 +8,7 @@ import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.exception.ResourceOwnershipException;
+import com.expensetracker.big_brother.transaction.dto.TransactionExportFilter;
 import com.expensetracker.big_brother.transaction.dto.TransactionRequest;
 import com.expensetracker.big_brother.transaction.dto.TransactionResponse;
 import com.expensetracker.big_brother.transaction.dto.UpdateTransactionRequest;
@@ -21,8 +22,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
+import org.springframework.jdbc.core.RowCallbackHandler;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -51,6 +62,12 @@ public class TransactionServiceTest {
     private OwnershipValidator ownershipValidator;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private JdbcTemplate jdbcTemplate;
+    @Mock
+    private Connection connection;
+    @Mock
+    private PreparedStatement preparedStatement;
     @InjectMocks
     private TransactionService transactionService;
 
@@ -225,6 +242,7 @@ public class TransactionServiceTest {
         Transaction transaction = aTransaction();
         UpdateTransactionRequest request = new UpdateTransactionRequest(TransactionType.INCOME, null, null, null, null, null);
         when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
+        when(transactionMapper.partialUpdate(request, transaction)).thenReturn(transaction);
         when(transactionRepository.save(transaction)).thenReturn(transaction);
         when(transactionMapper.toResponse(transaction)).thenReturn(aTransactionResponse(transaction));
 
@@ -248,6 +266,7 @@ public class TransactionServiceTest {
         when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
         when(categoryRepository.findById(newCategory.getId())).thenReturn(Optional.of(newCategory));
 
+        when(transactionMapper.partialUpdate(eq(request), any(Transaction.class))).thenReturn(transaction);
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
         when(transactionMapper.toResponse(any(Transaction.class))).thenReturn(response);
         TransactionResponse result = transactionService.updateTransaction(transactionId, request, userId);
@@ -336,9 +355,6 @@ public class TransactionServiceTest {
         verify(transactionRepository, never()).delete(any(Transaction.class));
     }
 
-    //    Case 3: Ownership Violation
-    //      Stubbing: Stub lookup to succeed. Stub validator to throw ResourceOwnershipException.
-    //      Assertion: Assert ResourceOwnershipException.
     @Test
     void deleteTransaction_OtherUsersTransaction_ThrowsException() {
         Transaction transaction = aTransaction();
@@ -353,5 +369,103 @@ public class TransactionServiceTest {
         assertThatThrownBy(() -> transactionService.deleteTransaction(transactionId, userId))
                 .isInstanceOf(ResourceOwnershipException.class);
         verify(transactionRepository, never()).delete(any(Transaction.class));
+    }
+
+    @Test
+    void exportTransactionsCsv_BaseQuery_WritesBomHeaderAndRows() throws SQLException, IOException {
+        ResultSet resultSet = mock(ResultSet.class);
+        when(resultSet.getObject("transaction_date", LocalDate.class)).thenReturn(LocalDate.of(2026, 1, 15));
+        when(resultSet.getString("type")).thenReturn("EXPENSE");
+        when(resultSet.getString("category_name")).thenReturn("Food");
+        when(resultSet.getBigDecimal("amount")).thenReturn(new BigDecimal("12.34"));
+        when(resultSet.getString("payment_method")).thenReturn("Cash");
+        when(resultSet.getString("note")).thenReturn("Lunch");
+
+        doAnswer(inv -> {
+            RowCallbackHandler handler = inv.getArgument(1, RowCallbackHandler.class);
+            handler.processRow(resultSet);
+            return null;
+        }).when(jdbcTemplate).query(any(PreparedStatementCreator.class), any(RowCallbackHandler.class));
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        transactionService.exportTransactionsCsv(userId, new TransactionExportFilter(null, null, null, null), outputStream);
+
+        String csv = outputStream.toString(StandardCharsets.UTF_8);
+        assertThat(csv).startsWith("\uFEFF");
+        assertThat(csv).contains("Date,Type,Category,Amount,Payment Method,Note");
+        assertThat(csv).contains("2026-01-15,EXPENSE,Food,12.34,Cash,Lunch");
+    }
+
+    @Test
+    void exportTransactionsCsv_SetsFetchSize_1000() throws SQLException, IOException {
+        when(connection.prepareStatement(anyString(), anyInt(), anyInt())).thenReturn(preparedStatement);
+        doAnswer(invocation -> {
+            invocation.getArgument(0, PreparedStatementCreator.class).createPreparedStatement(connection);
+            return null;
+        }).when(jdbcTemplate).query(any(PreparedStatementCreator.class), any(RowCallbackHandler.class));
+
+        transactionService.exportTransactionsCsv(userId, new TransactionExportFilter(null, null, null, null), new ByteArrayOutputStream());
+
+        verify(preparedStatement).setObject(1, userId);
+        verify(preparedStatement).setFetchSize(1000);
+    }
+
+    @Test
+    void buildExportQuery_BaseQuery_OnlyUserIdFilter() {
+        TransactionService.SqlQuery query = transactionService
+                .buildExportQuery(userId, new TransactionExportFilter(null, null, null, null));
+        assertThat(query.sql())
+                .contains("WHERE t.user_id = ?")
+                .contains("ORDER BY t.transaction_date DESC, t.id DESC")
+                .doesNotContain("AND t.");
+        assertThat(query.parameters()).containsExactly(userId);
+    }
+
+    @Test
+    void buildExportQuery_WithFrom_AppendsFromFragmentAndParam() {
+        LocalDate from = LocalDate.of(2026, 1, 1);
+        TransactionService.SqlQuery query = transactionService
+                .buildExportQuery(userId, new TransactionExportFilter(from, null, null, null));
+        assertThat(query.sql()).contains("AND t.transaction_date >= ?");
+        assertThat(query.parameters()).containsExactly(userId, from);
+    }
+
+    @Test
+    void buildExportQuery_WithTo_AppendsToFragmentAndParam() {
+        LocalDate to = LocalDate.of(2026, 1, 1);
+        TransactionService.SqlQuery query = transactionService
+                .buildExportQuery(userId, new TransactionExportFilter(null, to, null, null));
+        assertThat(query.sql()).contains("AND t.transaction_date <= ?");
+        assertThat(query.parameters()).containsExactly(userId, to);
+    }
+
+    @Test
+    void buildExportQuery_WithType_AppendsTypeFragmentAndParam() {
+        TransactionService.SqlQuery query = transactionService
+                .buildExportQuery(userId, new TransactionExportFilter(null, null, TransactionType.EXPENSE, null));
+        assertThat(query.sql()).contains("AND t.type = ?");
+        assertThat(query.parameters()).containsExactly(userId, TransactionType.EXPENSE.name());
+    }
+
+    @Test
+    void buildExportQuery_WithCategoryId_AppendsCategoryFragmentAndParam() {
+        TransactionService.SqlQuery query = transactionService
+                .buildExportQuery(userId, new TransactionExportFilter(null, null, null, categoryId));
+        assertThat(query.sql()).contains("AND t.category_id = ?");
+        assertThat(query.parameters()).containsExactly(userId, categoryId);
+    }
+
+    @Test
+    void buildExportQuery_WithAllFilters_AppendAllFragmentsAndParams() {
+        LocalDate to = LocalDate.of(2026, 1, 1);
+        LocalDate from = LocalDate.of(2026, 12, 31);
+        TransactionService.SqlQuery query = transactionService
+                .buildExportQuery(userId, new TransactionExportFilter(from, to, TransactionType.EXPENSE, categoryId));
+        assertThat(query.sql()).contains("AND t.transaction_date >= ?");
+        assertThat(query.sql()).contains("AND t.transaction_date <= ?");
+        assertThat(query.sql()).contains("AND t.type = ?");
+        assertThat(query.sql()).contains("AND t.category_id = ?");
+        assertThat(query.parameters()).containsExactly(userId, from, to, TransactionType.EXPENSE.name(), categoryId);
+
     }
 }

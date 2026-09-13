@@ -1,5 +1,5 @@
 import { api } from '../api.js';
-import { formatCurrency, getCurrentMonth, getFirstDayOfMonth, getLastDayOfMonth, getMonthLabel } from '../utils.js';
+import { formatCurrency, getCurrentMonth, getFirstDayOfMonth, getLastDayOfMonth, getMonthLabel, getCssVar } from '../utils.js';
 import { showLoading } from '../components/loading.js';
 
 let currentMonth = getCurrentMonth();
@@ -133,10 +133,19 @@ export async function renderReports(main) {
   }
 }
 
+function chartTheme() {
+  return {
+    tick: getCssVar('--chart-tick'),
+    grid: getCssVar('--chart-grid'),
+    surface: getCssVar('--surface'),
+  };
+}
+
 function renderBreakdownChart(data) {
   const canvas = document.getElementById('breakdown-chart');
   if (!canvas || !data.length) return;
 
+  const t = chartTheme();
   new Chart(canvas, {
     type: 'doughnut',
     data: {
@@ -145,7 +154,7 @@ function renderBreakdownChart(data) {
         data: data.map(d => d.amount),
         backgroundColor: data.map(d => d.color || '#9ca3af'),
         borderWidth: 2,
-        borderColor: '#fff',
+        borderColor: t.surface,
       }],
     },
     options: {
@@ -164,8 +173,9 @@ function renderTrendChart(trend) {
   const canvas = document.getElementById('trend-chart');
   if (!canvas || !trend.length) return;
 
-  const labels = trend.map(t => {
-    const [y, m] = t.month.split('-');
+  const t = chartTheme();
+  const labels = trend.map(row => {
+    const [y, m] = row.month.split('-');
     return new Date(Number(y), Number(m) - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
   });
 
@@ -176,7 +186,7 @@ function renderTrendChart(trend) {
       datasets: [
         {
           label: 'Income',
-          data: trend.map(t => t.income),
+          data: trend.map(row => row.income),
           borderColor: '#22c55e',
           backgroundColor: 'rgba(34, 197, 94, 0.1)',
           fill: true,
@@ -184,7 +194,7 @@ function renderTrendChart(trend) {
         },
         {
           label: 'Expenses',
-          data: trend.map(t => t.expenses),
+          data: trend.map(row => row.expenses),
           borderColor: '#ef4444',
           backgroundColor: 'rgba(239, 68, 68, 0.1)',
           fill: true,
@@ -196,11 +206,19 @@ function renderTrendChart(trend) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
+        legend: { position: 'top', labels: { usePointStyle: true, padding: 20, color: t.tick } },
         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}` } },
       },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } },
+        x: {
+          grid: { color: t.grid },
+          ticks: { color: t.tick },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: t.grid },
+          ticks: { color: t.tick, callback: (v) => '$' + v.toLocaleString() },
+        },
       },
     },
   });
@@ -210,6 +228,7 @@ function renderBudgetChart(data) {
   const canvas = document.getElementById('budget-chart');
   if (!canvas || !data.length) return;
 
+  const t = chartTheme();
   new Chart(canvas, {
     type: 'bar',
     data: {
@@ -233,11 +252,19 @@ function renderBudgetChart(data) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
+        legend: { position: 'top', labels: { usePointStyle: true, padding: 20, color: t.tick } },
         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}` } },
       },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } },
+        x: {
+          grid: { color: t.grid },
+          ticks: { color: t.tick },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: t.grid },
+          ticks: { color: t.tick, callback: (v) => '$' + v.toLocaleString() },
+        },
       },
     },
   });
@@ -261,6 +288,7 @@ function renderPaymentDoughnut(data) {
   const values = entries.map(e => e[1]);
   const colors = labels.map((_, i) => PAYMENT_COLORS[i % PAYMENT_COLORS.length]);
 
+  const t = chartTheme();
   new Chart(canvas, {
     type: 'doughnut',
     data: {
@@ -269,7 +297,7 @@ function renderPaymentDoughnut(data) {
         data: values,
         backgroundColor: colors,
         borderWidth: 2,
-        borderColor: '#fff',
+        borderColor: t.surface,
       }],
     },
     options: {
@@ -306,6 +334,7 @@ function renderPaymentStackedBar(data) {
   const canvas = document.getElementById('payment-stacked-chart');
   if (!canvas || !data.length) return;
 
+  const t = chartTheme();
   const categories = [...new Set(data.map(d => d.categoryName))];
   const methods = [...new Set(data.map(d => d.paymentMethod))];
 
@@ -326,12 +355,21 @@ function renderPaymentStackedBar(data) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
+        legend: { position: 'top', labels: { usePointStyle: true, padding: 20, color: t.tick } },
         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}` } },
       },
       scales: {
-        x: { stacked: true },
-        y: { stacked: true, beginAtZero: true, ticks: { callback: (v) => '$' + v.toLocaleString() } },
+        x: {
+          stacked: true,
+          grid: { color: t.grid },
+          ticks: { color: t.tick },
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          grid: { color: t.grid },
+          ticks: { color: t.tick, callback: (v) => '$' + v.toLocaleString() },
+        },
       },
     },
   });
