@@ -105,6 +105,15 @@ public class EmailServiceTest {
         assertThat(body).contains("<p>Hello</p>");
     }
 
+    @Test
+    void sendHtmlAsync_DelegatesToSendHtml() {
+        when(mailSender.createMimeMessage()).thenReturn(createMessage());
+
+        service.sendHtmlAsync("to@example.com", "Subject", "<html>body</html>");
+
+        verify(mailSender).send(any(MimeMessage.class));
+    }
+
     private String extractEmailBody(MimeMultipart multipart) throws Exception {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < multipart.getCount(); i++) {

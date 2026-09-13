@@ -180,4 +180,16 @@ public class RateLimitingFilterTest {
 
         verify(bucketFactory, times(1)).apply("127.0.0.1");
     }
+
+    @Test
+    void defaultConstructor_Enabled_PassesThrough() throws Exception {
+        RateLimitingFilter filter = new RateLimitingFilter(new RateLimitProperties(true, 5, 1, 60), objectMapper);
+        MockHttpServletRequest request = request();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilterInternal(request, response, new MockFilterChain());
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getHeader("Retry-After")).isNull();
+    }
 }

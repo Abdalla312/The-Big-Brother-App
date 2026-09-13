@@ -216,4 +216,19 @@ public class RecurringTransactionProcessorTest {
         assertThat(count).isEqualTo(1);
         verify(transactionRepository, times(2)).save(any(Transaction.class));
     }
+
+    @Test
+    void processDueTransactions_FailedRuleFilteredOutAndLoopBreaks() {
+        RecurringTransaction r1 = aRule(RecurrenceFrequency.DAILY, LocalDate.now().minusDays(1));
+
+        when(repository.findDueBatch(any(LocalDate.class), any(Pageable.class)))
+                .thenReturn(aPage(List.of(r1)))
+                .thenReturn(aPage(List.of(r1)));
+        when(transactionRepository.save(any(Transaction.class))).thenThrow(new RuntimeException("boom"));
+
+        long count = processor.processDueTransactions();
+
+        assertThat(count).isZero();
+        verify(repository, times(2)).findDueBatch(any(LocalDate.class), any(Pageable.class));
+    }
 }

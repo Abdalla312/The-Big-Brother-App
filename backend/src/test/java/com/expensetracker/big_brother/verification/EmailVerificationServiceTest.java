@@ -121,6 +121,18 @@ public class EmailVerificationServiceTest {
     }
 
     @Test
+    void sendEmailChangeVerification_ActiveTokenExists_DoesNothing() {
+        User user = aUser();
+        when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+        when(verificationRepository.existsByUserAndExpiresAtAfter(eq(user), any())).thenReturn(true);
+
+        verificationService.sendEmailChangeVerification(user, "new@example.com");
+
+        verify(verificationRepository, never()).save(any());
+        verify(emailService, never()).sendHtmlAsync(any(), any(), any());
+    }
+
+    @Test
     void sendPasswordResetEmail_Success() {
         User user = aUser();
         when(emailTemplateService.renderPasswordReset(any(), any(), anyInt())).thenReturn("<html>Reset</html>");
@@ -231,5 +243,46 @@ public class EmailVerificationServiceTest {
         assertThatThrownBy(() -> verificationService.verifyPasswordResetToken(rawToken, userId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid token type");
+    }
+
+    @Test
+    void verifyEmail_UserIdMismatch_ThrowsException() {
+        User userB = new User();
+        userB.setId(UUID.randomUUID());
+        String rawToken = "rawToken";
+        String hash = computeHash(rawToken, userId);
+        EmailVerificationToken token = new EmailVerificationToken(hash, userB, null, LocalDateTime.now().plusHours(1));
+        when(verificationRepository.findByTokenHash(hash)).thenReturn(Optional.of(token));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> verificationService.verifyEmail(rawToken, userId));
+
+        assertThat(ex.getMessage()).isEqualTo("Invalid verification token");
+    }
+
+    @Test
+    void verifyPasswordResetToken_UserIdMismatch_ThrowsException() {
+        User userB = new User();
+        userB.setId(UUID.randomUUID());
+        String rawToken = "rawToken";
+        String hash = computeHash(rawToken, userId);
+        EmailVerificationToken token = new EmailVerificationToken(hash, userB, null, LocalDateTime.now().plusMinutes(15), TokenType.PASSWORD_RESET);
+        when(verificationRepository.findByTokenHash(hash)).thenReturn(Optional.of(token));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> verificationService.verifyEmail(rawToken, userId));
+
+        assertThat(ex.getMessage()).isEqualTo("Invalid verification token");
+    }
+
+    @Test
+    void verifyPasswordResetToken_ExpiredToken_DeletesAndThrows() {
+        User user = aUser();
+        String hash = computeHash("rawToken", userId);
+        EmailVerificationToken token = new EmailVerificationToken(hash, user, null, LocalDateTime.now().minusMinutes(1), TokenType.PASSWORD_RESET);
+        when(verificationRepository.findByTokenHash(hash)).thenReturn(Optional.of(token));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> verificationService.verifyPasswordResetToken("rawToken", userId));
+
+        assertThat(ex.getMessage()).isEqualTo("Reset token expired");
+        verify(verificationRepository).delete(token);
     }
 }

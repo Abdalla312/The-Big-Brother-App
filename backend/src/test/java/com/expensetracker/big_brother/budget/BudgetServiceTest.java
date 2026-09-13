@@ -21,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -211,6 +212,19 @@ public class BudgetServiceTest {
         assertThatThrownBy(() -> budgetService.createBudget(request, userId))
                 .isInstanceOf(ResourceNotFoundException.class);
         verify(budgetRepository, never()).save(any(Budget.class));
+    }
+
+    @Test
+    void createBudget_ConcurrentInsert_ThrowsDuplicateException() {
+        Category category = aCategory();
+        BudgetRequest request = aBudgetRequest();
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(budgetRepository.existsByUserIdAndCategoryIdAndMonth(userId, categoryId, month)).thenReturn(false);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(aUser()));
+        when(budgetRepository.save(any(Budget.class))).thenThrow(new DataIntegrityViolationException("dup key"));
+
+        assertThatThrownBy(() -> budgetService.createBudget(request, userId))
+                .isInstanceOf(DuplicateResourceException.class);
     }
 
     @Test
