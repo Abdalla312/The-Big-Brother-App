@@ -115,6 +115,15 @@ function openCategoryModal(existing) {
   openModal(
     isEdit ? 'Edit Category' : 'New Category',
     `<form id="cat-form" class="space-y-4">
+      ${isEdit ? '' : `
+      <div id="default-suggestions">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-semibold text-gray-700">Start from a default template</span>
+        </div>
+        <div id="default-list" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1"></div>
+        <p id="default-empty" class="hidden text-xs text-gray-400 mt-2">No default templates for this type.</p>
+        <hr class="my-4 border-gray-200">
+      </div>`}
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
         <input type="text" id="cat-name" class="input" required maxlength="100" value="${existing?.name || ''}">
@@ -150,6 +159,10 @@ function openCategoryModal(existing) {
     document.getElementById('cat-color').value = e.target.value;
   });
 
+  if (!isEdit) {
+    initDefaultSuggestions();
+  }
+
   document.getElementById('cat-save').addEventListener('click', async () => {
     const body = {
       name: document.getElementById('cat-name').value.trim(),
@@ -171,6 +184,65 @@ function openCategoryModal(existing) {
       closeModal();
       loadCategories();
     } catch {}
+  });
+}
+
+let defaultCategoriesCache = null;
+
+async function initDefaultSuggestions() {
+  const list = document.getElementById('default-list');
+  if (!list) return;
+
+  if (!defaultCategoriesCache) {
+    try {
+      const res = await api.get('/categories?defaultCategories=true&page=0&size=100&sort=name');
+      defaultCategoriesCache = res?.data?.content || [];
+    } catch {
+      renderDefaultList(list, []);
+      return;
+    }
+  }
+
+  renderDefaultList(list, defaultCategoriesCache);
+
+  document.getElementById('cat-type').addEventListener('change', () => {
+    renderDefaultList(list, defaultCategoriesCache);
+  });
+}
+
+function renderDefaultList(list, defaults) {
+  const type = document.getElementById('cat-type')?.value || 'EXPENSE';
+  const items = defaults.filter(c => c.type === type);
+  const empty = document.getElementById('default-empty');
+
+  if (!items.length) {
+    list.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  list.innerHTML = items.map(c => `
+    <button type="button" class="default-cat-chip flex flex-col items-start gap-1.5 p-2 rounded-lg border border-gray-200 hover:border-brand-500 hover:bg-brand-50 transition-colors text-left cursor-pointer" data-id="${c.id}">
+      <span class="flex items-center gap-2 w-full">
+        <span class="color-dot" style="background-color: ${c.color || '#9ca3af'}; width: 0.75rem; height: 0.75rem; border-radius: 9999px;"></span>
+        <span class="text-sm font-medium text-gray-700 truncate">${c.name}</span>
+      </span>
+      <span class="badge ${c.type === 'INCOME' ? 'badge-income' : 'badge-expense'}">${c.type}</span>
+    </button>
+  `).join('');
+
+  list.querySelectorAll('.default-cat-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const cat = defaults.find(c => c.id === chip.dataset.id);
+      if (!cat) return;
+      document.getElementById('cat-name').value = cat.name;
+      document.getElementById('cat-type').value = cat.type;
+      document.getElementById('cat-color').value = cat.color || '#6366f1';
+      document.getElementById('cat-color-text').value = cat.color || '#6366f1';
+      document.getElementById('cat-icon').value = cat.icon || '';
+      showToast(`Template "${cat.name}" loaded — edit then create`, 'info');
+    });
   });
 }
 
