@@ -6,7 +6,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.5.14</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
     <groupId>com.expenseTracker</groupId>
     <artifactId>Big_Brother</artifactId>
@@ -244,6 +244,21 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-maven-plugin</artifactId>
+                <version>1.4</version>
+                <executions>
+                    <execution>
+                        <goals><goal>generate</goal></goals>
+                    </execution>
+                </executions>
+                <configuration>
+                <apiDocsUrl>http://localhost:8080/v3/api-docs</apiDocsUrl>
+                <outputFileName>api-docs.json</outputFileName>
+                <outputDir>${project.basedir}</outputDir>
+                </configuration>
             </plugin>
         </plugins>
     </build>

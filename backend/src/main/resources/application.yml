@@ -1,5 +1,6 @@
-#file: noinspection SpellCheckingInspection
 spring:
+  config:
+    import: optional:file:.env[.properties]
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   application:

@@ -29,3 +29,6 @@ management:
 app:
   jwt:
     access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000}
+springdoc:
+  api-docs:
+    enabled: false
