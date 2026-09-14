@@ -3,6 +3,9 @@ import { isLoggedIn, logout, getUser, setUser } from './auth.js';
 import { renderSidebar, updateActiveLink } from './components/sidebar.js';
 import { api } from './api.js';
 import { showToast } from './components/toast.js';
+import { initTheme } from './theme.js';
+
+initTheme();
 
 function showAppUI() {
   document.getElementById('app').classList.remove('hidden');
@@ -84,6 +87,16 @@ addRoute('/verify', authLayout(async (params) => {
 addRoute('/resend-verification', authLayout(async (params) => {
   const { renderResendVerification } = await import('./pages/resend-verification.js');
   renderResendVerification();
+}), false);
+
+addRoute('/forgot-password', authLayout(async (params) => {
+  const { renderForgotPassword } = await import('./pages/forgot-password.js');
+  renderForgotPassword();
+}), false);
+
+addRoute('/reset-password', authLayout(async (params) => {
+  const { renderResetPassword } = await import('./pages/reset-password.js');
+  renderResetPassword(params);
 }), false);
 
 addRoute('/dashboard', appLayout(loadDashboard));

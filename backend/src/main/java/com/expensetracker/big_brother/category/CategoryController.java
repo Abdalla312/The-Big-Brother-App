@@ -5,6 +5,7 @@ import com.expensetracker.big_brother.category.dto.CreateCategoryRequest;
 import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
 import com.expensetracker.big_brother.common.ApiResponse;
 import com.expensetracker.big_brother.common.PageResponse;
+import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,16 +26,17 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<CategoryResponse>>> getAll(
+    public ResponseEntity<ApiResponse<PageResponse<CategoryResponse>>> getAllCategories(
             @AuthenticationPrincipal CustomUserDetails user,
-            @PageableDefault(size = 50, sort = "name") Pageable pageable,
-            @RequestParam(defaultValue = "user") String type) {
-        PageResponse<CategoryResponse> categories = categoryService.getAllCategories(user.getUserId(), type, pageable);
+            @RequestParam(required = false) TransactionType type,
+            @RequestParam(defaultValue = "false") boolean defaultCategories,
+            @PageableDefault(size = 20, sort = "name") Pageable pageable) {
+        PageResponse<CategoryResponse>  categories = categoryService.getAllCategories(user.getUserId(), type, defaultCategories, pageable);
         return ResponseEntity.ok(ApiResponse.ok(categories, "Categories retrieved"));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<CategoryResponse>> create(
+    public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(
             @RequestBody @Valid CreateCategoryRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {
         CategoryResponse response = categoryService.createCategory(request, user.getUserId());
@@ -44,7 +46,7 @@ public class CategoryController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<ApiResponse<CategoryResponse>> update(
+    public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(
             @PathVariable UUID id,
             @RequestBody @Valid UpdateCategoryRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {
@@ -53,10 +55,20 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(
+    public ResponseEntity<ApiResponse<Void>> deleteCategory(
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails user) {
         categoryService.deleteCategory(id, user.getUserId());
         return ResponseEntity.ok(ApiResponse.ok(null, "Category deleted"));
+    }
+
+    @GetMapping("/trash")
+    public ResponseEntity<ApiResponse<PageResponse<CategoryResponse>>> getCategoriesTrash(@AuthenticationPrincipal CustomUserDetails user, Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.from(categoryService.getDeletedCategories(user.getUserId(), pageable)), "Categories trash retrieved"));
+    }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<CategoryResponse>> restoreDeletedCategory(@AuthenticationPrincipal CustomUserDetails user, @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(categoryService.restoreDeletedCategory(user.getUserId(), id), "Category restored"));
     }
 }

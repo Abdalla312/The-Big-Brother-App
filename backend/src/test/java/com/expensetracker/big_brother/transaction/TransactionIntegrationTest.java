@@ -7,18 +7,21 @@ import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.transaction.dto.TransactionRequest;
 import com.expensetracker.big_brother.transaction.dto.UpdateTransactionRequest;
 import com.expensetracker.big_brother.user.User;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 public class TransactionIntegrationTest extends BaseIntegrationTest {
 
@@ -27,6 +30,7 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
     private User userB;
     private Category defaultCategory;
     private Category userACategory;
+    @Autowired private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -190,7 +194,14 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
         performDelete("/api/v1/transactions/" + transaction.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Transaction deleted successfully"));
+        entityManager.flush();
+        entityManager.clear();
+
         assertThat(transactionRepository.findById(transaction.getId())).isEmpty();
+
+        performGet("/api/v1/transactions/" + transaction.getId(), userAPrincipal)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
     }
 
     @Test
@@ -208,5 +219,80 @@ public class TransactionIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("FORBIDDEN"));
 
+    }
+
+    @Test
+    void getTransactionsTrash_ReturnsSoftDeletedTransactions() throws Exception {
+        Transaction userATransaction = seedTransaction(new BigDecimal("200.0"), LocalDate.now(), userA, userACategory);
+        userATransaction.setDeletedAt(LocalDateTime.now());
+        performGet("/api/v1/transactions/trash", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].deletedAt").isNotEmpty());
+    }
+
+    @Test
+    void getTransactionsTrash_Unauthorized_Returns401() throws Exception {
+        performGet("/api/v1/transactions/trash", null)
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void restoreDeletedTransaction_OwnDeletedTransaction_Returns200AndRestores() throws Exception {
+        Transaction userATransaction = seedTransaction(new BigDecimal("200.0"), LocalDate.now(), userA, userACategory);
+        userATransaction.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/transactions/" + userATransaction.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deletedAt").value(nullValue()));
+    }
+
+    @Test
+    void restoreDeletedTransaction_OtherUsersTransaction_Returns403() throws Exception {
+        Category userBCategory = seedCategory("Rent", TransactionType.EXPENSE, userB);
+        Transaction userBTransaction = seedTransaction(new BigDecimal("200.0"), LocalDate.now(), userB, userBCategory);
+        userBTransaction.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/transactions/" + userBTransaction.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void restoreDeletedTransaction_NonExistentTransaction_Returns404() throws Exception {
+        performPut("/api/v1/transactions/" + UUID.randomUUID() + "/restore", userAPrincipal, null)
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getTransactions_ExcludesSoftDeletedByDefault() throws Exception {
+        Transaction transactionA = seedTransaction(new BigDecimal("200.0"), LocalDate.now(), userA, userACategory);
+        Transaction transactionB = seedTransaction(new BigDecimal("500.0"), LocalDate.now(), userA, userACategory);
+        transactionB.setDeletedAt(LocalDateTime.now());
+        performGet("/api/v1/transactions", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].deletedAt").value(nullValue()));
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(transactionRepository.findById(transactionB.getId())).isEmpty();
+    }
+
+    @Test
+    void exportTransactions_ReturnsCsvWithSeededRow() throws Exception {
+        seedTransaction(new BigDecimal("50.00"), LocalDate.now(), userA, userACategory);
+        entityManager.flush();
+        performGet("/api/v1/transactions/export", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/csv"))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        containsString("attachment; filename=\"transactions-")))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, endsWith(".csv\"")))
+                .andExpect(content().string(containsString("Date,Type,Category,Amount,Payment Method,Note")))
+                .andExpect(content().string(containsString("EXPENSE,Utilities,50.0")));
+    }
+
+    @Test
+    void exportTransactions_Unauthenticated_Returns401() throws Exception {
+        performGet("/api/v1/transactions/export", null)
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }
 }

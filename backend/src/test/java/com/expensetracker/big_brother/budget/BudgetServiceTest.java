@@ -21,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -75,7 +76,7 @@ public class BudgetServiceTest {
 
     private CategoryResponse aCategoryResponse(Category c) {
         return new CategoryResponse(
-                c.getId(), c.getName(), c.getType(), "#FFFFFF", "icon", c.getUser() == null);
+                c.getId(), c.getName(), c.getType(), "#FFFFFF", "icon", c.getUser() == null, null);
     }
 
     private Budget aBudget() {
@@ -91,7 +92,7 @@ public class BudgetServiceTest {
         BigDecimal remaining = b.getLimitAmount().subtract(spent);
         double percent = spent.doubleValue() / b.getLimitAmount().doubleValue() * 100.0;
         return new BudgetResponse(
-                b.getId(), aCategoryResponse(b.getCategory()), b.getMonth(), b.getLimitAmount(), spent, remaining, Math.round(percent * 100.0) / 100.0);
+                b.getId(), aCategoryResponse(b.getCategory()), b.getMonth(), b.getLimitAmount(), spent, remaining, Math.round(percent * 100.0) / 100.0, null);
     }
 
     private BudgetRequest aBudgetRequest() {
@@ -214,6 +215,19 @@ public class BudgetServiceTest {
     }
 
     @Test
+    void createBudget_ConcurrentInsert_ThrowsDuplicateException() {
+        Category category = aCategory();
+        BudgetRequest request = aBudgetRequest();
+        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
+        when(budgetRepository.existsByUserIdAndCategoryIdAndMonth(userId, categoryId, month)).thenReturn(false);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(aUser()));
+        when(budgetRepository.save(any(Budget.class))).thenThrow(new DataIntegrityViolationException("dup key"));
+
+        assertThatThrownBy(() -> budgetService.createBudget(request, userId))
+                .isInstanceOf(DuplicateResourceException.class);
+    }
+
+    @Test
     void updateBudget_LimitOnly_Success() {
         Budget budget = aBudget();
         budget.setLimitAmount(new BigDecimal("600.0"));
@@ -243,7 +257,7 @@ public class BudgetServiceTest {
         CategoryResponse catResponse = aCategoryResponse(newCategory);
         BigDecimal spent = BigDecimal.ZERO;
         BudgetResponse response = new BudgetResponse(
-                budgetId, catResponse, month, budget.getLimitAmount(), spent, budget.getLimitAmount(), 0.0);
+                budgetId, catResponse, month, budget.getLimitAmount(), spent, budget.getLimitAmount(), 0.0, null);
         when(budgetRepository.findById(budgetId)).thenReturn(Optional.of(budget));
         when(categoryRepository.findById(newCategoryId)).thenReturn(Optional.of(newCategory));
         when(budgetRepository.save(any(Budget.class))).thenReturn(budget);

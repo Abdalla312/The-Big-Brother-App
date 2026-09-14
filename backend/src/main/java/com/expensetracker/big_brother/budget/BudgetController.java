@@ -9,6 +9,7 @@ import com.expensetracker.big_brother.security.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,5 +57,19 @@ public class BudgetController {
             @AuthenticationPrincipal CustomUserDetails user) {
         budgetService.deleteBudget(user.getUserId(), id);
         return ResponseEntity.ok(ApiResponse.ok(null, "Budget deleted"));
+    }
+
+    @GetMapping("/trash")
+    public ResponseEntity<ApiResponse<PageResponse<BudgetResponse>>> getDeletedBudgets(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PageableDefault(size = 20, sort = "deletedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.from(budgetService.getDeletedBudgets(user.getUserId(), pageable)), "Budget trash retrieved"));
+    }
+
+    @PutMapping("{id}/restore")
+    public ResponseEntity<ApiResponse<BudgetResponse>> restoreDeletedBudget(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(budgetService.restoreDeletedBudget(user.getUserId(), id), "Budget restored"));
     }
 }

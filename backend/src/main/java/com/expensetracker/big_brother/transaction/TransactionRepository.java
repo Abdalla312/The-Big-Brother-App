@@ -1,7 +1,11 @@
 package com.expensetracker.big_brother.transaction;
 
+import com.expensetracker.big_brother.common.BypassSoftDelete;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.report.dto.projection.*;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -10,9 +14,15 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID>, JpaSpecificationExecutor<Transaction> {
+
+    @Override
+    @Query("SELECT t FROM Transaction t WHERE t.id = :id ")
+    @NotNull
+    Optional<Transaction> findById(@NotNull UUID id);
 
     boolean existsByCategoryId(UUID categoryId);
 
@@ -90,4 +100,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     );
 
     long countByUserIdAndTransactionDateBetween(UUID userId, LocalDate from, LocalDate to);
+
+    @BypassSoftDelete
+    @Query("SELECT t FROM Transaction t WHERE t.deletedAt IS NOT NULL AND t.user.id = :userId ")
+    Page<Transaction> findDeletedTransactions(@Param("userId") UUID userId, Pageable pageable);
+
+    @BypassSoftDelete
+    @Query("SELECT t From Transaction t WHERE t.id = :id AND t.deletedAt IS NOT NULL ")
+    Optional<Transaction> findDeletedById(@Param("id") UUID id);
 }

@@ -1,7 +1,7 @@
 spring:
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
     properties:
       hibernate:
         default_schema: public
@@ -41,3 +41,7 @@ app:
       support-email: "test@example.com"
   reset:
       expiry-minutes: 30
+  mail:
+    from-address: ${MAIL_FROM:expense.tracker.big.brother@gmail.com}
+    from-name: ${MAIL_FROM_NAME:Big Brother Team}
+    reply-to: ${MAIL_REPLY_TO:expense.tracker.big.brother@gmail.com}

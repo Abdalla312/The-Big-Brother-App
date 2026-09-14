@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Base64;
+import java.util.Date;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -116,5 +117,23 @@ public class JwtServiceTest {
         String tamperedToken = token + "tampered";
 
         assertThat(jwtService.isTokenValid(tamperedToken, customUserDetails)).isFalse();
+    }
+
+    @Test
+    void extractExpiration_ReturnsExpirationDate() {
+        String token = jwtService.generateToken(customUserDetails);
+        assertThat(jwtService.extractExpiration(token)).isAfter(new Date());
+    }
+
+    @Test
+    void isTokenExpired_ValidToken_ReturnsFalse() {
+        String token = jwtService.generateToken(customUserDetails);
+        assertThat(jwtService.isTokenExpired(token)).isFalse();
+    }
+
+    @Test
+    void isTokenExpired_TamperedToken_ReturnsFalse() {
+        String tampered = jwtService.generateToken(customUserDetails) + "tampered";
+        assertThat(jwtService.isTokenExpired(tampered)).isFalse();
     }
 }

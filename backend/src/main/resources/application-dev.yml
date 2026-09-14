@@ -1,6 +1,4 @@
 spring:
-  config:
-    import: optional:file:.env[.properties]
 
   jpa:
     show-sql: true
@@ -25,3 +23,9 @@ app:
     refill-rate: 10
     refill-period-seconds: 60
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  info:
+    title: Big Brother API
+    version: v1

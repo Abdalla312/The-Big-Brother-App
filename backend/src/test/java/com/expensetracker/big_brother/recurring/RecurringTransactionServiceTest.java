@@ -96,9 +96,9 @@ public class RecurringTransactionServiceTest {
                 r.getId(), r.getType(), r.getAmount(),
                 new CategoryResponse(r.getCategory().getId(), r.getCategory().getName(),
                         r.getCategory().getType(), "#FFFFFF", "icon",
-                        r.getCategory().getUser() == null),
+                        r.getCategory().getUser() == null, null),
                 r.getFrequency(), r.getNextExecutionDate(), r.isActive(),
-                r.getPaymentMethod(), r.getNote(), LocalDateTime.now());
+                r.getPaymentMethod(), r.getNote(), LocalDateTime.now(), null);
     }
 
     private CreateRecurringTransactionRequest aCreateRequest() {

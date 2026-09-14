@@ -8,13 +8,19 @@ import com.expensetracker.big_brother.user.dto.ChangePasswordRequest;
 import com.expensetracker.big_brother.user.dto.DeleteAccountRequest;
 import com.expensetracker.big_brother.user.dto.UpdateProfileRequest;
 import com.expensetracker.big_brother.user.dto.UserResponse;
+import com.expensetracker.big_brother.verification.EmailVerificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +40,8 @@ public class UserServiceTest {
     PasswordEncoder passwordEncoder;
     @Mock
     RefreshTokenService refreshTokenService;
+    @Mock
+    EmailVerificationService emailVerificationService;
     @InjectMocks
     UserService userService;
 
@@ -49,7 +57,7 @@ public class UserServiceTest {
 
     private UserResponse aUserResponse(User user) {
         return new UserResponse(
-                user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getCreatedAt());
+                user.getId(), user.getName(), user.getEmail(), user.getRole(), user.getCreatedAt(), null);
     }
 
     @Test
@@ -77,7 +85,7 @@ public class UserServiceTest {
         User user = aUser();
         UpdateProfileRequest request = new UpdateProfileRequest("newName", null);
         UserResponse response = new UserResponse(
-                userId, "newName", user.getEmail(), user.getRole(), user.getCreatedAt());
+                userId, "newName", user.getEmail(), user.getRole(), user.getCreatedAt(), null);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userMapper.toResponse(any(User.class))).thenReturn(response);
         when(userRepository.save(any(User.class))).thenReturn(user);
@@ -119,6 +127,29 @@ public class UserServiceTest {
     }
 
     @Test
+    void updateProfile_UserNotFound_ThrowsException() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> userService.updateProfile(userId, new UpdateProfileRequest("x", null)))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateProfile_EmailChange_TriggersVerification() {
+        User user = aUser();
+        UpdateProfileRequest request = new UpdateProfileRequest(null, "new@example.com");
+        UserResponse response = aUserResponse(user);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toResponse(user)).thenReturn(response);
+
+        userService.updateProfile(userId, request);
+
+        verify(emailVerificationService).sendEmailChangeVerification(user, "new@example.com");
+    }
+
+    @Test
     void changePassword_Success() {
         User user = aUser();
         ChangePasswordRequest request = new ChangePasswordRequest(
@@ -147,6 +178,14 @@ public class UserServiceTest {
     }
 
     @Test
+    void changePassword_UserNotFound_ThrowsException() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> userService.changePassword(userId, new ChangePasswordRequest("pw", "x")))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void deleteAccount_Success() {
         User user = aUser();
         DeleteAccountRequest request = new DeleteAccountRequest("CurrentPass1!");
@@ -166,5 +205,49 @@ public class UserServiceTest {
         assertThatThrownBy(() -> userService.deleteAccount(userId, request))
                 .isInstanceOf(IllegalArgumentException.class);
         verify(userRepository, never()).delete(user);
+    }
+
+    @Test
+    void deleteAccount_UserNotFound_ThrowsException() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> userService.deleteAccount(userId, new DeleteAccountRequest("pw")))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void getDeletedUsers_Success() {
+        User user = aUser();
+        UserResponse response = aUserResponse(user);
+        Page<User> page = new PageImpl<>(List.of(user));
+        when(userRepository.findDeletedUsers(Pageable.ofSize(20))).thenReturn(page);
+        when(userMapper.toResponse(user)).thenReturn(response);
+
+        Page<UserResponse> result = userService.getDeletedUsers(Pageable.ofSize(20));
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().getFirst().id()).isEqualTo(userId);
+    }
+
+    @Test
+    void restoreDeletedUser_Success() {
+        User user = aUser();
+        UserResponse response = aUserResponse(user);
+        when(userRepository.findDeletedById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toResponse(user)).thenReturn(response);
+
+        UserResponse result = userService.restoreDeletedUser(userId);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(user.getDeletedAt()).isNull();
+    }
+
+    @Test
+    void restoreDeletedUser_NotFound_ThrowsException() {
+        when(userRepository.findDeletedById(userId)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> userService.restoreDeletedUser(userId))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verify(userRepository, never()).save(any());
     }
 }

@@ -35,6 +35,9 @@ export function renderLogin() {
           Sign in
         </button>
       </form>
+      <div class="mt-4 text-center text-sm">
+        <a onclick="window.location.hash='#/forgot-password'" class="text-gray-500 hover:text-gray-600 font-medium cursor-pointer">Forgot your password?</a>
+      </div>
       <div class="mt-6 text-center text-sm text-gray-500">
         Don't have an account?
         <a onclick="window.location.hash='#/register'" class="text-brand-600 font-medium hover:text-brand-700 cursor-pointer">Register</a>

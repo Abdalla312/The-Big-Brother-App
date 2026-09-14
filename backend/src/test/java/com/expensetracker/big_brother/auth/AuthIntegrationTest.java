@@ -1,21 +1,31 @@
 package com.expensetracker.big_brother.auth;
 
 import com.expensetracker.big_brother.BaseIntegrationTest;
-import com.expensetracker.big_brother.auth.dto.LoginRequest;
-import com.expensetracker.big_brother.auth.dto.RefreshRequest;
-import com.expensetracker.big_brother.auth.dto.RegisterRequest;
+import com.expensetracker.big_brother.auth.dto.*;
 import com.expensetracker.big_brother.mail.EmailService;
+import com.expensetracker.big_brother.user.Role;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.verification.EmailVerificationRepository;
+import com.expensetracker.big_brother.verification.EmailVerificationToken;
+import com.expensetracker.big_brother.verification.TokenType;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.util.HexFormat;
+import java.util.UUID;
+
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,6 +54,38 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         String accessToken = json.path("data").path("accessToken").asText();
         String refreshToken = json.path("data").path("refreshToken").asText();
         return new String[]{accessToken, refreshToken};
+    }
+
+    private User seedUnverifiedUser(String email, String name) {
+        User u = new User();
+        u.setName(name);
+        u.setEmail(email);
+        u.setPasswordHash(passwordEncoder.encode("hashed"));
+        u.setRole(Role.USER);
+        u.setUserVerified(false);
+        return userRepository.save(u);
+    }
+
+    private void seedVerificationToken(User user, String rawToken) {
+        String hash = computeHash(rawToken, user.getId());
+        verificationRepository.save(new EmailVerificationToken(
+                hash, user, null, LocalDateTime.now().plusHours(24)));
+    }
+
+    private void seedPasswordResetToken(User user, String rawToken) {
+        String hash = computeHash(rawToken, user.getId());
+        verificationRepository.save(new EmailVerificationToken(
+                hash, user, null, LocalDateTime.now().plusMinutes(30), TokenType.PASSWORD_RESET));
+    }
+
+    private String computeHash(String token, UUID userId) {
+        String value = userId + ":" + token;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -133,4 +175,88 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         performPost("/api/v1/auth/refresh", null, request)
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void verifyEmail_ValidToken_Returns200() throws Exception {
+        User user = seedUnverifiedUser("test@example.com", "userA");
+        String rawToken = "raw-token-abc";
+        seedVerificationToken(user, rawToken);
+
+        performGet("/api/v1/auth/verify-email?userId=" + user.getId() + "&token=" + rawToken, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Email verified successfully"));
+        assertThat(userRepository.findById(user.getId()).orElseThrow().isUserVerified()).isTrue();
+    }
+
+    @Test
+    void verifyEmail_InvalidToken_Returns400() throws Exception {
+        User user = seedUser("test@example.com", "userA");
+
+        performGet("/api/v1/auth/verify-email?userId=" + user.getId() + "&token=garbage-token", null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid verification token"));
+    }
+
+    @Test
+    void resendVerification_UnverifiedUser_Returns200() throws Exception {
+        User user = seedUnverifiedUser("resend@example.com", "Resend User");
+        ResendVerificationRequest request = new ResendVerificationRequest(user.getEmail());
+        performPost("/api/v1/auth/resend-verification", null, request)
+                .andExpect(status().isOk());
+        verify(emailService).sendHtmlAsync(eq(user.getEmail()), eq("Verify your email"), anyString());
+    }
+
+    @Test
+    void resendVerification_AlreadyVerified_Returns200() throws Exception {
+        User user = seedUser("resend@example.com", "Resend User");
+        ResendVerificationRequest request = new ResendVerificationRequest(user.getEmail());
+        performPost("/api/v1/auth/resend-verification", null, request)
+                .andExpect(status().isOk());
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void forgotPassword_ValidEmail_Returns200() throws Exception {
+        User user = seedUser("forgot@example.com", "Forgot User");
+        ForgotPasswordRequest request = new ForgotPasswordRequest(user.getEmail());
+        performPost("/api/v1/auth/forgot-password", null, request)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message")
+                        .value("If the email is registered, a reset link has been sent."));
+        verify(emailService).sendHtmlAsync(eq(user.getEmail()), eq("Reset your password"), anyString());
+    }
+
+    @Test
+    void forgotPassword_NonExistentEmail_Returns200() throws Exception {
+        performPost("/api/v1/auth/forgot-password", null,
+                new ForgotPasswordRequest("ghost@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message")
+                        .value("If the email is registered, a reset link has been sent."));
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void resetPassword_ValidToken_Returns200() throws Exception {
+        User user = seedUser("reset@example.com", "Reset User");
+        String rawToken = "reset-token-abc";
+        seedPasswordResetToken(user, rawToken);
+
+        performPost("/api/v1/auth/reset-password", null,
+                new ResetPasswordRequest(rawToken, user.getId(), "Password123#"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password has been reset successfully"));
+        User refreshed = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(passwordEncoder.matches("Password123#", refreshed.getPasswordHash())).isTrue();
+        assertThat(refreshed.getTokenVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void resetPassword_InvalidToken_Returns400() throws Exception {
+        User user = seedUser("reset@example.com", "Reset User");
+        performPost("/api/v1/auth/reset-password", null,
+                new ResetPasswordRequest("garbage-token", user.getId(), "Password123#"))
+                .andExpect(status().isBadRequest());
+    }
+
 }

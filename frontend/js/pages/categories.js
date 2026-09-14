@@ -2,6 +2,8 @@ import { api } from '../api.js';
 import { showLoading, showEmpty } from '../components/loading.js';
 import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
+import { openTrashModal } from '../components/trash-modal.js';
+import { formatDate } from '../utils.js';
 
 let activeTab = 'all';
 
@@ -11,10 +13,16 @@ export async function renderCategories(main) {
   main.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Categories</h1>
-      <button class="btn btn-primary" id="add-category-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Category
-      </button>
+      <div class="flex items-center gap-2">
+        <button class="btn btn-secondary" id="trash-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Trash
+        </button>
+        <button class="btn btn-primary" id="add-category-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Category
+        </button>
+      </div>
     </div>
 
     <div class="flex items-center gap-2 mb-4">
@@ -27,6 +35,7 @@ export async function renderCategories(main) {
   `;
 
   document.getElementById('add-category-btn').addEventListener('click', () => openCategoryModal(null));
+  document.getElementById('trash-btn').addEventListener('click', () => openTrashCategories());
   document.querySelectorAll('.cat-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
       activeTab = e.target.dataset.tab;
@@ -106,6 +115,15 @@ function openCategoryModal(existing) {
   openModal(
     isEdit ? 'Edit Category' : 'New Category',
     `<form id="cat-form" class="space-y-4">
+      ${isEdit ? '' : `
+      <div id="default-suggestions">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-semibold text-gray-700">Start from a default template</span>
+        </div>
+        <div id="default-list" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1"></div>
+        <p id="default-empty" class="hidden text-xs text-gray-400 mt-2">No default templates for this type.</p>
+        <hr class="my-4 border-gray-200">
+      </div>`}
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
         <input type="text" id="cat-name" class="input" required maxlength="100" value="${existing?.name || ''}">
@@ -141,6 +159,10 @@ function openCategoryModal(existing) {
     document.getElementById('cat-color').value = e.target.value;
   });
 
+  if (!isEdit) {
+    initDefaultSuggestions();
+  }
+
   document.getElementById('cat-save').addEventListener('click', async () => {
     const body = {
       name: document.getElementById('cat-name').value.trim(),
@@ -162,5 +184,89 @@ function openCategoryModal(existing) {
       closeModal();
       loadCategories();
     } catch {}
+  });
+}
+
+let defaultCategoriesCache = null;
+
+async function initDefaultSuggestions() {
+  const list = document.getElementById('default-list');
+  if (!list) return;
+
+  if (!defaultCategoriesCache) {
+    try {
+      const res = await api.get('/categories?defaultCategories=true&page=0&size=100&sort=name');
+      defaultCategoriesCache = res?.data?.content || [];
+    } catch {
+      renderDefaultList(list, []);
+      return;
+    }
+  }
+
+  renderDefaultList(list, defaultCategoriesCache);
+
+  document.getElementById('cat-type').addEventListener('change', () => {
+    renderDefaultList(list, defaultCategoriesCache);
+  });
+}
+
+function renderDefaultList(list, defaults) {
+  const type = document.getElementById('cat-type')?.value || 'EXPENSE';
+  const items = defaults.filter(c => c.type === type);
+  const empty = document.getElementById('default-empty');
+
+  if (!items.length) {
+    list.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+  if (empty) empty.classList.add('hidden');
+
+  list.innerHTML = items.map(c => `
+    <button type="button" class="default-cat-chip flex flex-col items-start gap-1.5 p-2 rounded-lg border border-gray-200 hover:border-brand-500 hover:bg-brand-50 transition-colors text-left cursor-pointer" data-id="${c.id}">
+      <span class="flex items-center gap-2 w-full">
+        <span class="color-dot" style="background-color: ${c.color || '#9ca3af'}; width: 0.75rem; height: 0.75rem; border-radius: 9999px;"></span>
+        <span class="text-sm font-medium text-gray-700 truncate">${c.name}</span>
+      </span>
+      <span class="badge ${c.type === 'INCOME' ? 'badge-income' : 'badge-expense'}">${c.type}</span>
+    </button>
+  `).join('');
+
+  list.querySelectorAll('.default-cat-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const cat = defaults.find(c => c.id === chip.dataset.id);
+      if (!cat) return;
+      document.getElementById('cat-name').value = cat.name;
+      document.getElementById('cat-type').value = cat.type;
+      document.getElementById('cat-color').value = cat.color || '#6366f1';
+      document.getElementById('cat-color-text').value = cat.color || '#6366f1';
+      document.getElementById('cat-icon').value = cat.icon || '';
+      showToast(`Template "${cat.name}" loaded — edit then create`, 'info');
+    });
+  });
+}
+
+function openTrashCategories() {
+  openTrashModal({
+    title: 'Deleted Categories',
+    emptyMessage: 'No deleted categories',
+    fetchTrash: (page) => api.get(`/categories/trash?page=${page}&size=20&sort=deletedAt,desc`),
+    restoreItem: (id) => api.put(`/categories/${id}/restore`),
+    onClose: loadCategories,
+    columns: [
+      { header: 'Name', key: 'name', render: (r) => `<span class="text-sm font-medium">${r.name}</span>` },
+      { header: 'Type', key: 'type', render: (r) => `<span class="badge ${r.type === 'INCOME' ? 'badge-income' : 'badge-expense'}">${r.type}</span>` },
+      { header: 'Color', key: 'color', render: (r) => `
+          <div class="flex items-center gap-2">
+            <span class="color-dot" style="background-color: ${r.color || '#9ca3af'}; width: 1.5rem; height: 1.5rem;"></span>
+            <span class="text-sm text-gray-500">${r.color || '-'}</span>
+          </div>` },
+      { header: 'Icon', key: 'icon', render: (r) => `<span class="text-sm text-gray-500">${r.icon || '-'}</span>` },
+      { header: 'Deleted At', key: 'deletedAt', render: (r) => `<span class="text-sm text-gray-500">${formatDate(r.deletedAt)}</span>` },
+      { header: '', key: 'actions', render: (r) => `
+          <button class="btn btn-ghost btn-sm p-1 restore-btn text-green-600 hover:text-green-800" data-id="${r.id}" title="Restore">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/><path d="M5 18v-2a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v2"/></svg>
+          </button>` },
+    ],
   });
 }

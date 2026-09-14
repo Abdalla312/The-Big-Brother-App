@@ -5,11 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Big Brother - Expense Tracker</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('bb_theme');
+        var dark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+      } catch (e) {}
+    })();
+  </script>
   <script src="vendor/chart.umd.min.js"></script>
   <script src="vendor/lucide.min.js"></script>
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body class="bg-gray-50 text-gray-900 antialiased">
+<body class="text-gray-900 antialiased bg-page">
   <div id="app" class="flex h-screen overflow-hidden">
     <div id="sidebar-container"></div>
     <div class="flex flex-1 flex-col overflow-hidden">
@@ -18,7 +27,7 @@
     </div>
   </div>
 
-  <div id="auth-container" class="hidden min-h-screen flex items-center justify-center bg-gray-50 p-4">
+  <div id="auth-container" class="hidden min-h-screen flex items-center justify-center bg-page p-4">
     <div id="auth-content" class="w-full max-w-md"></div>
   </div>
 

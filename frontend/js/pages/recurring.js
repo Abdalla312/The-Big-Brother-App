@@ -4,6 +4,7 @@ import { showLoading } from '../components/loading.js';
 import { renderTable } from '../components/table.js';
 import { openModal, closeModal, confirmDialog } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
+import { openTrashModal } from '../components/trash-modal.js';
 
 const PAGE_SIZE = 15;
 const FREQUENCY_LABELS = { DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' };
@@ -25,10 +26,16 @@ async function renderPage(main, categories) {
   main.innerHTML = `
     <div class="page-header">
       <h1 class="page-title">Recurring Transactions</h1>
-      <button class="btn btn-primary" id="add-recurring-btn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Recurring
-      </button>
+      <div class="flex items-center gap-2">
+        <button class="btn btn-secondary" id="trash-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Trash
+        </button>
+        <button class="btn btn-primary" id="add-recurring-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Recurring
+        </button>
+      </div>
     </div>
 
     <div class="card">
@@ -37,6 +44,7 @@ async function renderPage(main, categories) {
   `;
 
   document.getElementById('add-recurring-btn').addEventListener('click', () => openRecurringModal(categories));
+  document.getElementById('trash-btn').addEventListener('click', () => openTrashRecurring(categories));
 
   await loadRecurring(categories);
 }
@@ -231,6 +239,33 @@ function openRecurringModal(categories, existing = null) {
       closeModal();
       loadRecurring(categories);
     } catch {}
+  });
+}
+
+function openTrashRecurring(categories) {
+  openTrashModal({
+    title: 'Deleted Recurring Transactions',
+    emptyMessage: 'No deleted recurring transactions',
+    fetchTrash: (page) => api.get(`/recurring-transactions/trash?page=${page}&size=20&sort=deletedAt,desc`),
+    restoreItem: (id) => api.put(`/recurring-transactions/${id}/restore`),
+    onClose: () => loadRecurring(categories),
+    columns: [
+      { header: 'Frequency', key: 'frequency', render: (r) => `<span class="text-sm">${FREQUENCY_LABELS[r.frequency] || r.frequency}</span>` },
+      { header: 'Type', key: 'type', render: (r) => `<span class="badge ${r.type === 'INCOME' ? 'badge-income' : 'badge-expense'}">${r.type}</span>` },
+      { header: 'Category', key: 'category', render: (r) => `
+          <div class="flex items-center gap-2">
+            <span class="color-dot" style="background-color: ${r.category?.color || '#9ca3af'}"></span>
+            <span class="text-sm">${r.category?.name || '-'}</span>
+          </div>` },
+      { header: 'Amount', key: 'amount', render: (r) => `<span class="text-sm font-semibold">${formatCurrency(r.amount)}</span>` },
+      { header: 'Next Execution', key: 'nextExecutionDate', render: (r) => `<span class="text-sm">${formatDate(r.nextExecutionDate)}</span>` },
+      { header: 'Status', key: 'isActive', render: (r) => `<span class="badge ${r.isActive ? 'badge-active' : 'badge-paused'}">${r.isActive ? 'Active' : 'Paused'}</span>` },
+      { header: 'Deleted At', key: 'deletedAt', render: (r) => `<span class="text-sm text-gray-500">${formatDate(r.deletedAt)}</span>` },
+      { header: '', key: 'actions', render: (r) => `
+          <button class="btn btn-ghost btn-sm p-1 restore-btn text-green-600 hover:text-green-800" data-id="${r.id}" title="Restore">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/><path d="M5 18v-2a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v2"/></svg>
+          </button>` },
+    ],
   });
 }
 

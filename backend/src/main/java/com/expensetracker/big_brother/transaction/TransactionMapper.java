@@ -4,9 +4,8 @@ import com.expensetracker.big_brother.category.Category;
 import com.expensetracker.big_brother.category.dto.CategoryResponse;
 import com.expensetracker.big_brother.transaction.dto.TransactionRequest;
 import com.expensetracker.big_brother.transaction.dto.TransactionResponse;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
+import com.expensetracker.big_brother.transaction.dto.UpdateTransactionRequest;
+import org.mapstruct.*;
 
 import java.util.List;
 
@@ -22,4 +21,8 @@ public interface TransactionMapper {
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "category", ignore = true)
     Transaction toEntity(TransactionRequest request);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    Transaction partialUpdate(UpdateTransactionRequest updateTransactionRequest,
+                              @MappingTarget Transaction transaction);
 }

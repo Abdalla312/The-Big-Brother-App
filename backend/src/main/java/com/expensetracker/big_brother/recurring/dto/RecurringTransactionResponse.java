@@ -19,6 +19,6 @@ public record RecurringTransactionResponse(
         boolean isActive,
         String paymentMethod,
         String note,
-        LocalDateTime createdAt
-) {
+        LocalDateTime createdAt,
+        LocalDateTime deletedAt) {
 }

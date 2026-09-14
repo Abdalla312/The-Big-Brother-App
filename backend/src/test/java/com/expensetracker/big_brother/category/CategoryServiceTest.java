@@ -83,7 +83,8 @@ public class CategoryServiceTest {
                 category.getType(),
                 category.getColor(),
                 category.getIcon(),
-                category.getUser() == null);
+                category.getUser() == null,
+                null);
     }
 
     private CreateCategoryRequest aCreateRequest() {
@@ -96,34 +97,18 @@ public class CategoryServiceTest {
 
     // ----getAllCategories------
     @Test
-    void getAllCategories_success() {
-        Category cat1 = aCategory();
-        Category cat2 = aSystemCategory();
-        Page<Category> page = new PageImpl<>(List.of(cat1, cat2));
-        when(categoryRepository.findAllByUserIdOrUserIsNull(eq(userId), any(Pageable.class))).thenReturn(page);
-        when(categoryMapper.toResponse(cat1)).thenReturn(aCategoryResponse(cat1));
-        when(categoryMapper.toResponse(cat2)).thenReturn(aCategoryResponse(cat2));
-
-        PageResponse<CategoryResponse> result = categoryService.getAllCategories(userId, "all", Pageable.ofSize(20));
-
-        assertThat(result.content()).hasSize(2);
-        assertThat(result.totalElements()).isEqualTo(2);
-        verify(categoryRepository).findAllByUserIdOrUserIsNull(eq(userId) , any(Pageable.class));
-    }
-
-    @Test
     void getAllUserCategories_success() {
         Category cat1 = aCategory();
         Category cat2 = aSystemCategory();
         Page<Category> page = new PageImpl<>(List.of(cat1));
-        when(categoryRepository.findAllByUserId(eq(userId), any(Pageable.class))).thenReturn(page);
+        when(categoryRepository.findUserCategories(eq(userId), eq(null), any(Pageable.class))).thenReturn(page);
         when(categoryMapper.toResponse(cat1)).thenReturn(aCategoryResponse(cat1));
 
-        PageResponse<CategoryResponse> result = categoryService.getAllCategories(userId, "user", Pageable.ofSize(20));
+        PageResponse<CategoryResponse> result = categoryService.getAllCategories(userId, null, false, Pageable.ofSize(20));
 
         assertThat(result.content()).hasSize(1);
         assertThat(result.totalElements()).isEqualTo(1);
-        verify(categoryRepository).findAllByUserId(eq(userId) , any(Pageable.class));
+        verify(categoryRepository).findUserCategories(eq(userId), eq(null), any(Pageable.class));
     }
 
     @Test
@@ -131,14 +116,14 @@ public class CategoryServiceTest {
         Category cat1 = aCategory();
         Category cat2 = aSystemCategory();
         Page<Category> page = new PageImpl<>(List.of(cat2));
-        when(categoryRepository.findAllByUserIdIsNull(any(Pageable.class))).thenReturn(page);
+        when(categoryRepository.findDefaultCategories(eq(null), any(Pageable.class))).thenReturn(page);
         when(categoryMapper.toResponse(cat2)).thenReturn(aCategoryResponse(cat2));
 
-        PageResponse<CategoryResponse> result = categoryService.getAllCategories(userId, "default", Pageable.ofSize(20));
+        PageResponse<CategoryResponse> result = categoryService.getAllCategories(userId, null, true, Pageable.ofSize(20));
 
         assertThat(result.content()).hasSize(1);
         assertThat(result.totalElements()).isEqualTo(1);
-        verify(categoryRepository).findAllByUserIdIsNull(any(Pageable.class));
+        verify(categoryRepository).findDefaultCategories(eq(null), any(Pageable.class));
     }
 
     // --- createCategory -------

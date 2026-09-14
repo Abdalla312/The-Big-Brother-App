@@ -6,15 +6,20 @@ import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.security.CustomUserDetails;
 import com.expensetracker.big_brother.user.User;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -24,6 +29,9 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
     private CustomUserDetails userAPrincipal;
     private User userA;
     private User userB;
+
+    @Autowired
+    EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -46,36 +54,47 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.content[0].name").value("Salary (User A)"));
     }
     @Test
-    void getCategories_typeUser_ReturnsOnlyUserCategories() throws Exception{
+    void getCategories_TypeIncome_ReturnsOnlyUsersIncomeCategories() throws Exception {
         seedCategory("Food (Default)", TransactionType.EXPENSE, null);
         seedCategory("Salary (User A)", TransactionType.INCOME, userA);
         seedCategory("Business (User B)", TransactionType.INCOME, userB);
-        performGet("/api/v1/categories?type=user", userAPrincipal)
+        performGet("/api/v1/categories?type=INCOME", userAPrincipal)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content", hasSize(1)))
                 .andExpect(jsonPath("$.data.content[0].name").value("Salary (User A)"));
     }
 
     @Test
-    void getCategories_typeDefault_ReturnsOnlyDefaultCategories() throws Exception{
+    void getCategories_DefaultCategoriesTrue_ReturnsOnlyDefaultCategories() throws Exception{
         seedCategory("Food (Default)", TransactionType.EXPENSE, null);
         seedCategory("Salary (User A)", TransactionType.INCOME, userA);
         seedCategory("Business (User B)", TransactionType.INCOME, userB);
-        performGet("/api/v1/categories?type=default", userAPrincipal)
+        performGet("/api/v1/categories?defaultCategories=true", userAPrincipal)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content", hasSize(1)))
                 .andExpect(jsonPath("$.data.content[0].name").value("Food (Default)"));
     }
 
     @Test
-    void getCategories_typeAll_ReturnsBoth() throws Exception{
+    void getCategories_TypeExpense_Returns200() throws Exception{
         seedCategory("Food (Default)", TransactionType.EXPENSE, null);
         seedCategory("Salary (User A)", TransactionType.INCOME, userA);
-        seedCategory("Business (User B)", TransactionType.INCOME, userB);
-        performGet("/api/v1/categories?type=all", userAPrincipal)
+        seedCategory("Business (User A)", TransactionType.EXPENSE, userA);
+        performGet("/api/v1/categories?type=EXPENSE", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].name").value("Business (User A)"));
+    }
+
+    @Test
+    void getCategories_TypeExpenseAndDefaultCategoriesCombined_Returns200() throws Exception {
+        seedCategory("Food (Default)", TransactionType.EXPENSE, null);
+        seedCategory("Salary (User A)", TransactionType.INCOME, userA);
+        seedCategory("Business (User A)", TransactionType.EXPENSE, null);
+        performGet("/api/v1/categories?type=EXPENSE&defaultCategories=true", userAPrincipal)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content", hasSize(2)))
-                .andExpect(jsonPath("$.data.content[0].name").value("Food (Default)"));
+                .andExpect(jsonPath("$.data.content[*].name").value(containsInAnyOrder("Business (User A)", "Food (Default)")));
     }
 
     @Test
@@ -205,6 +224,10 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
         performDelete("/api/v1/categories/" + category.getId(), userAPrincipal, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Category deleted"));
+
+        entityManager.flush();
+        entityManager.clear();
+
         assertFalse(categoryRepository.existsById(category.getId()));
     }
 
@@ -250,5 +273,52 @@ public class CategoryIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }
+
+    @Test
+    void getCategoriesTrash_ReturnsSoftDeletedCategories() throws Exception {
+        Category category = seedCategory("Food", TransactionType.EXPENSE, userA);
+        seedCategory("Entertainment", TransactionType.EXPENSE, userA);
+        category.setDeletedAt(LocalDateTime.now());
+
+        performGet("/api/v1/categories/trash", userAPrincipal)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].deletedAt").isNotEmpty());
+    }
+
+    @Test
+    void restoreDeletedCategory_OwnDeletedCategory_Returns200AndRestores() throws Exception {
+        Category category = seedCategory("Food", TransactionType.EXPENSE, userA);
+        category.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/categories/" + category.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertTrue(categoryRepository.existsById(category.getId()));
+    }
+
+    @Test
+    void restoreDeletedCategory_OtherUsersCategory_Returns403() throws Exception {
+        Category category = seedCategory("Food", TransactionType.EXPENSE, userB);
+        category.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/categories/" + category.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void restoreDeletedCategory_NonExistentCategory_Returns404() throws Exception {
+        performPut("/api/v1/categories/" + UUID.randomUUID() + "/restore", userAPrincipal, null)
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void restoreDeletedCategory_DefaultCategory_Returns403() throws Exception {
+        Category category = seedCategory("Food", TransactionType.EXPENSE, null);
+        category.setDeletedAt(LocalDateTime.now());
+        performPut("/api/v1/categories/" + category.getId() + "/restore", userAPrincipal, null)
+                .andExpect(status().isForbidden());
+    }
+
 
 }

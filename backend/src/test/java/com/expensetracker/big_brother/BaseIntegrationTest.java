@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -34,6 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 @Import(TestContainersConfiguration.class)
 public abstract class BaseIntegrationTest {
     @Autowired
@@ -68,6 +70,16 @@ public abstract class BaseIntegrationTest {
 
     protected ResultActions performPost(String url, CustomUserDetails principal, Object body) throws Exception {
         var requestBuilder = post(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body));
+        if (principal != null) {
+            requestBuilder.with(user(principal));
+        }
+        return mockMvc.perform(requestBuilder);
+    }
+
+    protected ResultActions performPut(String url, CustomUserDetails principal, Object body) throws Exception {
+        var requestBuilder = put(url)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body));
         if (principal != null) {
