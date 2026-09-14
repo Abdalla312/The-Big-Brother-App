@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAPI definition",
-    "version": "v0"
+    "title": "Big Brother API",
+    "version": "v1"
   },
   "servers": [
     {
@@ -1404,6 +1404,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "minLength": 1,
               "pattern": "\\d{4}-\\d{2}"
             }
           }
@@ -1935,6 +1936,7 @@
           },
           "month": {
             "type": "string",
+            "minLength": 1,
             "pattern": "\\d{4}-\\d{2}"
           },
           "limitAmount": {
@@ -1952,14 +1954,16 @@
         "type": "object",
         "properties": {
           "token": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "userId": {
             "type": "string",
             "format": "uuid"
           },
           "newPassword": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
@@ -1978,9 +1982,7 @@
           "message": {
             "type": "string"
           },
-          "data": {
-            "type": "object"
-          },
+          "data": {},
           "timestamp": {
             "type": "string",
             "format": "date-time"
@@ -1991,7 +1993,9 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "minLength": 1
           }
         },
         "required": [
@@ -2002,13 +2006,17 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "minLength": 1
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
@@ -2060,7 +2068,8 @@
         "type": "object",
         "properties": {
           "refreshToken": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
@@ -2101,10 +2110,13 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "minLength": 1
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
@@ -2116,7 +2128,9 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "format": "email",
+            "minLength": 1
           }
         },
         "required": [
@@ -2132,7 +2146,8 @@
             "minLength": 0
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "format": "email"
           }
         }
       },
@@ -2189,10 +2204,12 @@
         "type": "object",
         "properties": {
           "currentPassword": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "newPassword": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
@@ -2841,7 +2858,8 @@
         "type": "object",
         "properties": {
           "password": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
