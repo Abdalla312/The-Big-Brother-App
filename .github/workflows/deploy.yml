@@ -1,4 +1,4 @@
-name: Deploy to ECS
+name: Deploy to EC2
 
 on:
   workflow_run:
@@ -11,13 +11,13 @@ env:
   AWS_REGION: eu-central-1
   ECR_REPOSITORY: big-brother
   ECR_REGISTRY: 847008502202.dkr.ecr.eu-central-1.amazonaws.com
-  ECS_CONTAINER_NAME: big-brother-backend
+  CONTAINER_NAME: big-brother-backend
 
 jobs:
   deploy:
-    name: Build, Push to ECR & Deploy to ECS
+    name: Build, Push to ECR & Deploy to EC2
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success'}}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout repository
@@ -39,7 +39,7 @@ jobs:
       - name: Build, tag, and push image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f backend/Dockerfile backend/
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -58,10 +58,10 @@ jobs:
             docker stop $CONTAINER_NAME || true
             docker rm $CONTAINER_NAME || true
             docker run -d \
-             --name $CONTAINER_NAME \
-             --restart unless-stopped \
-             -p 8080:8080
-             --env-file ~/app/.env \
-             $ECR_REGISTRY/$ECR_REPOSITORY:latest
+              --name $CONTAINER_NAME \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              --env-file ~/app/.env \
+              $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
             docker image prune -af --filter "until=24h"
