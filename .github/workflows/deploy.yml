@@ -13,19 +13,23 @@ env:
   ECR_REGISTRY: 847008502202.dkr.ecr.eu-central-1.amazonaws.com
   CONTAINER_NAME: big-brother-backend
 
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: Build, Push to ECR & Deploy to EC2
     runs-on: ubuntu-latest
     if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.head_branch == 'main')
-
+      github.event_name == 'workflow_dispatch' || 
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -41,7 +45,7 @@ jobs:
       - name: Build, tag, and push image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f backend/Dockerfile backend/
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -65,5 +69,8 @@ jobs:
               -p 8080:8080 \
               --env-file ~/app/.env \
               $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            
+            sleep 10
+            docker ps | grep $CONTAINER_NAME || (echo "Container failed to start!" && exit 1)
 
             docker image prune -af --filter "until=24h"
