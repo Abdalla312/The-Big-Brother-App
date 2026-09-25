@@ -26,13 +26,20 @@ public class SoftDeleteFilterAspect {
         Session session = entityManager.unwrap(Session.class);
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
+        boolean bypass = method.isAnnotationPresent(BypassSoftDelete.class);
 
-        if (method.isAnnotationPresent(BypassSoftDelete.class)) {
+        if (bypass) {
             session.disableFilter("deletedFilter");
         } else {
             session.enableFilter("deletedFilter");
         }
-        return joinPoint.proceed();
+        try {
+            return joinPoint.proceed();
+        } finally {
+            if (bypass) {
+                session.enableFilter("deletedFilter");
+            }
+        }
     }
 }
 

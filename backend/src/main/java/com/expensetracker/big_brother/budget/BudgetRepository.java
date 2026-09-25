@@ -18,6 +18,8 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
     @NotNull
     Optional<Budget> findById(@NotNull UUID id);
 
+    @Query(value = "SELECT b FROM Budget b JOIN FETCH b.category WHERE b.user.id = :userId AND b.month = :month",
+            countName = "SELECT count(b) FROM budget b WHERE b.user.id = :userId AND b.month = :month")
     Page<Budget> findAllByUserIdAndMonth(UUID userId, String month, Pageable pageable);
 
     List<Budget> findAllByUserIdAndMonth(UUID userId, String month);
@@ -31,4 +33,6 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
     @BypassSoftDelete
     @Query("SELECT b FROM Budget b WHERE b.id = :id AND b.deletedAt IS NOT NULL ")
     Optional<Budget> findDeletedById(@Param("id") UUID id);
+
+    boolean existsByCategoryId(UUID categoryId);
 }

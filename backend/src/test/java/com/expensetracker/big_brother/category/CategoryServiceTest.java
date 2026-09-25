@@ -1,5 +1,6 @@
 package com.expensetracker.big_brother.category;
 
+import com.expensetracker.big_brother.budget.BudgetRepository;
 import com.expensetracker.big_brother.category.dto.CategoryResponse;
 import com.expensetracker.big_brother.category.dto.CreateCategoryRequest;
 import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
@@ -47,6 +48,8 @@ public class CategoryServiceTest {
     private TransactionRepository transactionRepository;
     @Mock
     private RecurringTransactionRepository recurringTransactionRepository;
+    @Mock
+    private BudgetRepository budgetRepository;
     @InjectMocks
     private CategoryService categoryService;
 

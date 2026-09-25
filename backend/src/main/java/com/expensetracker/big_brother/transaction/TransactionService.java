@@ -107,6 +107,7 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", transactionId));
         ownershipValidator.validateOwnership(transaction.getUser().getId(), currentUserId);
 
+        Category effectiveCategory = transaction.getCategory();
         if (request.categoryId() != null && !transaction.getCategory().getId().equals(request.categoryId())) {
             Category newCategory = categoryRepository.findById(request.categoryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Category", request.categoryId()));
@@ -114,7 +115,14 @@ public class TransactionService {
                 throw new ResourceOwnershipException();
             }
             transaction.setCategory(newCategory);
+            effectiveCategory = newCategory;
         }
+        
+        TransactionType effectiveType = (request.type() != null) ? request.type() : transaction.getType();
+        if (!effectiveCategory.getType().equals(effectiveType)) {
+            throw new IllegalArgumentException("Transaction type mismatch with category");
+        }
+
         return transactionMapper.toResponse(
                 transactionRepository.save(
                         transactionMapper.partialUpdate(request, transaction)));
@@ -196,6 +204,7 @@ public class TransactionService {
                 LEFT JOIN categories c
                     ON c.id = t.category_id
                 WHERE t.user_id = ?
+                  AND t.deleted_at IS NULL
                 """);
 
         List<Object> params = new ArrayList<>();

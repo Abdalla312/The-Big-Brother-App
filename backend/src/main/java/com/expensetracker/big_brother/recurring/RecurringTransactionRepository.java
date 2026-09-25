@@ -24,7 +24,7 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
 
     @Query("SELECT r " +
             "FROM RecurringTransaction r " +
-            "WHere r.isActive = true AND r.nextExecutionDate <= :date")
+            "WHere r.isActive = true AND r.nextExecutionDate <= :date AND r.user.deletedAt IS NULL ")
     Page<RecurringTransaction> findDueBatch(@Param("date") LocalDate date, Pageable batch);
 
     boolean existsByCategoryId(UUID categoryId);

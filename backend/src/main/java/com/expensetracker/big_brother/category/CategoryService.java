@@ -1,5 +1,6 @@
 package com.expensetracker.big_brother.category;
 
+import com.expensetracker.big_brother.budget.BudgetRepository;
 import com.expensetracker.big_brother.category.dto.CategoryResponse;
 import com.expensetracker.big_brother.category.dto.CreateCategoryRequest;
 import com.expensetracker.big_brother.category.dto.UpdateCategoryRequest;
@@ -33,6 +34,7 @@ public class CategoryService {
     private final OwnershipValidator ownershipValidator;
     private final TransactionRepository transactionRepository;
     private final RecurringTransactionRepository recurringTransactionRepository;
+    private final BudgetRepository budgetRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<CategoryResponse> getAllCategories(UUID userId, TransactionType type, boolean defaultCategories, Pageable pageable) {
@@ -79,7 +81,9 @@ public class CategoryService {
             throw new ResourceOwnershipException();
         }
         ownershipValidator.validateOwnership(category.getUser().getId(), userId);
-        if (transactionRepository.existsByCategoryId(categoryId) || recurringTransactionRepository.existsByCategoryId(categoryId)){
+        if (transactionRepository.existsByCategoryId(categoryId)
+                || recurringTransactionRepository.existsByCategoryId(categoryId)
+                || budgetRepository.existsByCategoryId(categoryId)) {
             throw new CategoryInUseException();
         }
         categoryRepository.delete(category);

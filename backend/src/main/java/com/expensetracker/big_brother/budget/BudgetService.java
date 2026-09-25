@@ -11,6 +11,7 @@ import com.expensetracker.big_brother.exception.DuplicateResourceException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.exception.ResourceOwnershipException;
 import com.expensetracker.big_brother.report.ReportService;
+import com.expensetracker.big_brother.report.dto.projection.CategoryExpenses;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
@@ -26,7 +27,10 @@ import java.math.BigDecimal;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,18 +47,19 @@ public class BudgetService {
     // list all budgets in a month
     @Transactional(readOnly = true)
     public PageResponse<BudgetResponse> getBudgets(UUID userId, String month, Pageable pageable) {
-        YearMonth yearMonth;
         try{
-        yearMonth = YearMonth.parse(month);
+            YearMonth.parse(month);
         } catch (DateTimeException e) {
             throw new IllegalArgumentException("Invalid date format. Use yyyy-MM");
         }
         Page<Budget> budgets = budgetRepository.findAllByUserIdAndMonth(userId, month, pageable);
-        LocalDate startDate = yearMonth.atDay(1);
-        LocalDate endDate = yearMonth.atEndOfMonth();
+
+        List<CategoryExpenses> expenses = transactionRepository.expensesByCategory(userId, month);
+        Map<UUID, BigDecimal> spendingMap = expenses.stream()
+                .collect(Collectors.toMap(CategoryExpenses::categoryId, CategoryExpenses::amount));
+
         Page<BudgetResponse> responsePage = budgets.map(budget -> {
-            BigDecimal spent = transactionRepository
-                    .sumExpensesByUserAndCategoryAndDateRange(userId, budget.getCategory().getId(), startDate, endDate);
+            BigDecimal spent = spendingMap.getOrDefault(budget.getCategory().getId(), BigDecimal.ZERO);
             return budgetMapper.toResponseWithCalculations(budget, spent);
         });
         return PageResponse.from(responsePage);
