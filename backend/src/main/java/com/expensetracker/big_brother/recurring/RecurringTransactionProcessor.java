@@ -61,7 +61,7 @@ public class RecurringTransactionProcessor {
 
             if (dueRules.isEmpty()) break;
 
-            for (RecurringTransaction rule : page.getContent()) {
+            for (RecurringTransaction rule : dueRules) {
                 try {
                     processSingleRule(rule);
                     count++;

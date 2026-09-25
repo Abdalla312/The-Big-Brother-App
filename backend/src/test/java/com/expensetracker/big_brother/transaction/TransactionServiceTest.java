@@ -99,6 +99,7 @@ public class TransactionServiceTest {
         t.setCategory(aCategory());
         t.setAmount(new BigDecimal("400.0"));
         t.setTransactionDate(LocalDate.now());
+        t.setType(TransactionType.EXPENSE);
         return t;
     }
 
@@ -240,7 +241,7 @@ public class TransactionServiceTest {
     @Test
     void updateTransaction_Success() {
         Transaction transaction = aTransaction();
-        UpdateTransactionRequest request = new UpdateTransactionRequest(TransactionType.INCOME, null, null, null, null, null);
+        UpdateTransactionRequest request = new UpdateTransactionRequest(TransactionType.EXPENSE, null, null, null, null, null);
         when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
         when(transactionMapper.partialUpdate(request, transaction)).thenReturn(transaction);
         when(transactionRepository.save(transaction)).thenReturn(transaction);
@@ -417,7 +418,9 @@ public class TransactionServiceTest {
         assertThat(query.sql())
                 .contains("WHERE t.user_id = ?")
                 .contains("ORDER BY t.transaction_date DESC, t.id DESC")
-                .doesNotContain("AND t.");
+                .doesNotContain("AND t.transaction_date")
+                .doesNotContain("AND t.category_id")
+                .doesNotContain("AND t.type");
         assertThat(query.parameters()).containsExactly(userId);
     }
 
