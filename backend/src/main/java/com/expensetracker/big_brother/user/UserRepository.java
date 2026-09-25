@@ -26,6 +26,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Page<User> findDeletedUsers(Pageable pageable);
 
     @BypassSoftDelete
-    @Query("SELECT u FROM User u WHERE u.id = :id")
+    @Query("SELECT u FROM User u WHERE u.id = :id AND u.deletedAt IS NOT NULL")
     Optional<User> findDeletedById(@Param("id") UUID id);
 }

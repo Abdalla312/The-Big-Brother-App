@@ -12,6 +12,7 @@ import com.expensetracker.big_brother.common.validation.OwnershipValidator;
 import com.expensetracker.big_brother.exception.DuplicateResourceException;
 import com.expensetracker.big_brother.exception.ResourceNotFoundException;
 import com.expensetracker.big_brother.exception.ResourceOwnershipException;
+import com.expensetracker.big_brother.report.dto.projection.CategoryExpenses;
 import com.expensetracker.big_brother.transaction.TransactionRepository;
 import com.expensetracker.big_brother.user.User;
 import com.expensetracker.big_brother.user.UserRepository;
@@ -112,9 +113,8 @@ public class BudgetServiceTest {
 
         when(budgetRepository.findAllByUserIdAndMonth(eq(userId), eq(month), any(Pageable.class))).thenReturn(page);
 
-        when(transactionRepository.sumExpensesByUserAndCategoryAndDateRange(
-                userId, categoryId, YearMonth.now().atDay(1), YearMonth.now().atEndOfMonth()))
-                .thenReturn(spent);
+        when(transactionRepository.expensesByCategory(eq(userId), eq(month)))
+                .thenReturn(List.of(new CategoryExpenses(categoryId, "Food", "#fff", spent)));
         when(budgetMapper.toResponseWithCalculations(budget, spent)).thenReturn(response);
 
         PageResponse<BudgetResponse> result = budgetService.getBudgets(userId, month, Pageable.ofSize(20));
@@ -123,7 +123,7 @@ public class BudgetServiceTest {
         assertThat(result.content().getFirst().spentAmount()).isEqualByComparingTo(spent);
 
         verify(budgetRepository).findAllByUserIdAndMonth(eq(userId), eq(month), any(Pageable.class));
-        verify(transactionRepository).sumExpensesByUserAndCategoryAndDateRange(userId, categoryId, YearMonth.now().atDay(1), YearMonth.now().atEndOfMonth());
+        verify(transactionRepository).expensesByCategory(eq(userId), eq(month));
     }
 
     @Test
