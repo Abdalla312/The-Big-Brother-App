@@ -13,7 +13,7 @@ import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
     @Override
-    @Query("SELECT u FROM User u WHERE u.id = :id ")
+    @Query("SELECT u FROM User u WHERE u.id = :id AND u.deletedAt IS NULL ")
     @NotNull
     Optional<User> findById(@NotNull UUID id);
 
