@@ -65,6 +65,7 @@ public class RecurringTransactionProcessorTest {
         r.setAmount(new BigDecimal("100.00"));
         r.setFrequency(frequency);
         r.setNextExecutionDate(nextDate);
+        r.setScheduledDayOfMonth(nextDate.getDayOfMonth());
         r.setActive(true);
         return r;
     }
@@ -159,6 +160,34 @@ public class RecurringTransactionProcessorTest {
         RecurringTransaction rule = aRule(RecurrenceFrequency.YEARLY, LocalDate.of(2024, 2, 29));
         processor.processSingleRule(rule);
         assertThat(rule.getNextExecutionDate()).isEqualTo(LocalDate.of(2025, 2, 28));
+    }
+
+    @Test
+    void processSingleRule_MonthEndReturnsToAnchorDay() {
+        RecurringTransaction rule = aRule(RecurrenceFrequency.MONTHLY, LocalDate.of(2026, 1, 31));
+
+        processor.processSingleRule(rule);
+        assertThat(rule.getNextExecutionDate()).isEqualTo(LocalDate.of(2026, 2, 28));
+
+        processor.processSingleRule(rule);
+        assertThat(rule.getNextExecutionDate()).isEqualTo(LocalDate.of(2026, 3, 31));
+    }
+
+    @Test
+    void processingSingleRule_LeapDayReturnsInNextLeapYear() {
+        RecurringTransaction rule = aRule(RecurrenceFrequency.YEARLY, LocalDate.of(2024, 2, 29));
+
+        processor.processSingleRule(rule);
+        assertThat(rule.getNextExecutionDate()).isEqualTo(LocalDate.of(2025, 2, 28));
+
+        processor.processSingleRule(rule);
+        assertThat(rule.getNextExecutionDate()).isEqualTo(LocalDate.of(2026, 2, 28));
+
+        processor.processSingleRule(rule);
+        assertThat(rule.getNextExecutionDate()).isEqualTo(LocalDate.of(2027, 2, 28));
+
+        processor.processSingleRule(rule);
+        assertThat(rule.getNextExecutionDate()).isEqualTo(LocalDate.of(2028, 2, 29));
     }
 
     @Test

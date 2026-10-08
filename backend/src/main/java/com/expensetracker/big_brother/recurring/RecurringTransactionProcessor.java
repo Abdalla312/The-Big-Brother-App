@@ -12,6 +12,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -42,7 +43,7 @@ public class RecurringTransactionProcessor {
             tx.setNote("[Auto-recurring] " + (rule.getNote() != null ? rule.getNote() : ""));
             transactionRepository.save(tx);
 
-            rule.setNextExecutionDate(calculateNextDate(rule.getNextExecutionDate(), rule.getFrequency()));
+            rule.setNextExecutionDate(calculateNextDate(rule.getNextExecutionDate(), rule.getFrequency(), rule.getScheduledDayOfMonth()));
             recurringTransactionRepository.save(rule);
         });
     }
@@ -75,13 +76,17 @@ public class RecurringTransactionProcessor {
         return count;
     }
 
-    private LocalDate calculateNextDate(LocalDate currentDate, RecurrenceFrequency frequency) {
+    private LocalDate calculateNextDate(LocalDate currentDate, RecurrenceFrequency frequency, int scheduledDayOfMonth) {
         return switch (frequency) {
             case DAILY -> currentDate.plusDays(1);
             case WEEKLY -> currentDate.plusWeeks(1);
-            case MONTHLY -> currentDate.plusMonths(1);
-            case YEARLY -> currentDate.plusYears(1);
+            case MONTHLY -> dateInMonth(YearMonth.from(currentDate).plusMonths(1), scheduledDayOfMonth);
+            case YEARLY -> dateInMonth(YearMonth.from(currentDate).plusYears(1), scheduledDayOfMonth);
         };
+    }
+
+    private LocalDate dateInMonth(YearMonth month, int day) {
+        return month.atDay(Math.min(day, month.lengthOfMonth()));
     }
 
 }

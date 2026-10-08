@@ -5,6 +5,8 @@ import com.expensetracker.big_brother.common.BaseEntity;
 import com.expensetracker.big_brother.common.TransactionType;
 import com.expensetracker.big_brother.user.User;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -55,4 +57,9 @@ public class RecurringTransaction extends BaseEntity {
 
     @Column(nullable = false)
     private boolean isActive = true;
+
+    @Min(1)
+    @Max(31)
+    @Column(nullable = false)
+    private int scheduledDayOfMonth;
 }

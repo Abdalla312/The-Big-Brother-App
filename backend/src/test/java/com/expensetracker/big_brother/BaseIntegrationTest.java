@@ -154,6 +154,7 @@ public abstract class BaseIntegrationTest {
         RecurringTransaction r = new RecurringTransaction();
         r.setAmount(amount);
         r.setNextExecutionDate(nextExecutionDate);
+        r.setScheduledDayOfMonth(nextExecutionDate.getDayOfMonth());
         r.setFrequency(frequency);
         r.setType(type);
         r.setUser(user);
